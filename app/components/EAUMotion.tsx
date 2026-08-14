@@ -51,7 +51,12 @@ export function EAUMotion() {
           return undefined;
         }
 
+        let hasMoved = false;
         const move = (event: PointerEvent) => {
+          if (!hasMoved) {
+            hasMoved = true;
+            gsap.to([core, sword], { opacity: 1, duration: 0.18 });
+          }
           gsap.to(core, {
             x: event.clientX,
             y: event.clientY,
@@ -59,17 +64,19 @@ export function EAUMotion() {
             overwrite: "auto",
           });
           gsap.to(sword, {
-            x: event.clientX - 42,
-            y: event.clientY + 24,
-            rotation: -28 + Math.min(14, event.movementX * 0.7),
-            duration: 0.42,
+            x: event.clientX - 74,
+            y: event.clientY + 30,
+            rotation: -24 + Math.min(12, event.movementX * 0.55),
+            duration: 0.34,
             ease: "power3.out",
             overwrite: "auto",
           });
         };
 
         const hide = () => gsap.to([core, sword], { opacity: 0, duration: 0.18 });
-        const show = () => gsap.to([core, sword], { opacity: 1, duration: 0.18 });
+        const show = () => {
+          if (hasMoved) gsap.to([core, sword], { opacity: 1, duration: 0.18 });
+        };
 
         window.addEventListener("pointermove", move);
         document.addEventListener("pointerleave", hide);

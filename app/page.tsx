@@ -1,4 +1,5 @@
 import { BabylonLineScene } from "./components/BabylonLineScene";
+import { EAUCosmos } from "./components/EAUCosmos";
 import { EAUMotion } from "./components/EAUMotion";
 import { GameMicroDemo } from "./components/GameMicroDemo";
 import { LiveProductFrame } from "./components/LiveProductFrame";
@@ -91,7 +92,7 @@ export default function Home() {
         </div>
         <div className="hero-visual">
           <div className="hero-visual-label"><span>EAU // 001</span><span>FULL-STACK · ARCHVIZ · GAMES</span></div>
-          <BabylonLineScene mode="hero" />
+          <EAUCosmos />
         </div>
         <div className="proof-strip" aria-label="Selected career highlights">
           <div><strong>84%</strong><span>production 3D model reduction</span></div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type SceneMode = "hero" | "gamuda" | "platform";
+type SceneMode = "gamuda" | "platform";
 
 interface BabylonLineSceneProps {
   mode: SceneMode;
@@ -18,9 +18,7 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
   const [status, setStatus] = useState(
     mode === "gamuda"
       ? "Drag to orbit · Select a floor"
-      : mode === "platform"
-        ? "Explore the connected property map"
-        : "EAU // orbital city online",
+      : "Explore the connected property map",
   );
 
   useEffect(() => {
@@ -52,16 +50,16 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       const camera = new B.ArcRotateCamera(
         `camera-${mode}`,
         mode === "platform" ? -Math.PI / 2.35 : -Math.PI / 2.55,
-        mode === "hero" ? 1.13 : 1.05,
-        mode === "hero" ? 18 : 16,
-        new B.Vector3(0, mode === "hero" ? 2.4 : 1.7, 0),
+        1.05,
+        16,
+        new B.Vector3(0, 1.7, 0),
         scene,
       );
-      camera.lowerRadiusLimit = mode === "hero" ? 15 : 10;
-      camera.upperRadiusLimit = mode === "hero" ? 22 : 23;
+      camera.lowerRadiusLimit = 10;
+      camera.upperRadiusLimit = 23;
       camera.wheelDeltaPercentage = 0.02;
       camera.panningSensibility = 0;
-      if (mode !== "hero") camera.attachControl(canvas, true);
+      camera.attachControl(canvas, true);
 
       const violet = B.Color3.FromHexString("#b69cff");
       const jade = B.Color3.FromHexString("#8ee3c0");
@@ -150,20 +148,6 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
           false,
           0.012,
         );
-      }
-
-      if (mode === "hero") {
-        createBuilding(-1.9, 0.2, 9, 2.4, 2.0, violetWire, "Aether Spire");
-        createBuilding(0.3, -0.5, 15, 2.1, 2.1, quietWire, "Sky Archive");
-        createBuilding(2.3, 0.8, 11, 1.8, 1.7, jadeWire, "Jade Relay");
-
-        for (let radius = 3.2; radius <= 7.2; radius += 2) {
-          const circle = Array.from({ length: 65 }, (_, index) => {
-            const angle = (index / 64) * Math.PI * 2;
-            return new B.Vector3(Math.cos(angle) * radius, 2.5 + radius * 0.12, Math.sin(angle) * radius);
-          });
-          makeRoute(`orbit-${radius}`, circle, radius < 4 ? jade : violet, true, 0.055);
-        }
       }
 
       if (mode === "gamuda") {
@@ -275,8 +259,7 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
 
       scene.onBeforeRenderObservable.add(() => {
         if (!reducedMotion) {
-          lineMaterials.forEach((material) => { material.dashOffset -= mode === "hero" ? 0.0014 : 0.003; });
-          if (mode === "hero") root.rotation.y += 0.0012;
+          lineMaterials.forEach((material) => { material.dashOffset -= 0.003; });
           if (mode === "platform") root.rotation.y += 0.00035;
         }
       });
@@ -304,7 +287,7 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
 
   return (
     <div className={`babylon-stage babylon-${mode}`}>
-      <canvas ref={canvasRef} aria-label={mode === "hero" ? "Animated EAU wireframe city" : `${mode} interactive line-art preview`} />
+      <canvas ref={canvasRef} aria-label={`${mode} interactive line-art preview`} />
       <div className="scene-status" aria-live="polite">{status}</div>
       {mode === "platform" ? (
         <button className="scene-action" type="button" onClick={() => actionRef.current()}>

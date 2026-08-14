@@ -8,8 +8,10 @@ The site presents Kevin's work across three connected lanes:
 - interactive 3D systems for GoProp Pro, Web and Platform;
 - released and in-development games under Spicy MSG Studio.
 
-V2 adds an animated EAU visual system, interactive line-art product previews,
-click-to-load live products, game micro-demos and a shareable digital card.
+V2 adds a galaxy-and-planets EAU identity system with a flying cultivation sword,
+interactive line-art product previews, click-to-load live products, game micro-demos
+and a shareable digital card. Buildings stay inside the archviz case studies rather
+than the personal identity surfaces.
 
 ## Public project boundaries
 

@@ -23,6 +23,8 @@ test("server-renders the complete portfolio", async () => {
   assert.match(html, /<title>Kevin Yeoh — Full-Stack Archviz, Interactive 3D &amp; Games<\/title>/i);
   assert.match(html, /Building/);
   assert.match(html, /digital worlds/);
+  assert.match(html, /MILKY WAY \/\/ EAU SECTOR 001/);
+  assert.match(html, /flying cultivation sword/i);
   assert.match(html, /Architectural visualisation/);
   assert.match(html, /HauS on 15 — Gamuda SS15/);
   assert.match(html, /PHP and MySQL/);
@@ -47,11 +49,15 @@ test("keeps the finished portfolio responsive and accessible", async () => {
   ]);
 
   assert.match(page, /aria-label="Primary navigation"/);
+  assert.match(page, /<EAUCosmos \/>/);
+  assert.doesNotMatch(page, /BabylonLineScene mode="hero"/);
   assert.match(page, /aria-hidden="true"/);
   assert.match(layout, /metadataBase/);
   assert.match(layout, /\/og-v2\.png/);
   assert.match(css, /@media \(max-width: 760px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /@keyframes sword-crossing/);
+  assert.match(css, /\.cosmos-planet/);
   assert.match(packageJson, /"gsap": "3\.15\.0"/);
   assert.match(packageJson, /"@babylonjs\/core": "9\.21\.1"/);
   assert.match(packageJson, /"phaser": "4\.2\.1"/);

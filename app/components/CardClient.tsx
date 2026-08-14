@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BabylonLineScene } from "./BabylonLineScene";
+import { EAUCosmos } from "./EAUCosmos";
 
 export function CardClient() {
   const [copied, setCopied] = useState(false);
@@ -43,7 +43,7 @@ export function CardClient() {
             <button type="button" onClick={share}>{copied ? "Link copied" : "Share card"}</button>
           </div>
         </div>
-        <div className="digital-card-visual"><BabylonLineScene mode="hero" /></div>
+        <div className="digital-card-visual"><EAUCosmos variant="card" /></div>
       </div>
       <Link className="card-back-link" href="/">View full portfolio ↓</Link>
     </main>
