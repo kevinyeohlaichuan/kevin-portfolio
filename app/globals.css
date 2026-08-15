@@ -158,7 +158,7 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
   background-size: 367px 281px,419px 337px,461px 389px,503px 431px,557px 479px;
   animation: star-drift 54s linear infinite reverse;
 }
-.galaxy-disc { position: absolute; z-index: 3; width: 55%; aspect-ratio: 2.18; right: 2.5%; top: 9%; transform: rotate(-18deg); transform-origin: center; filter: drop-shadow(0 0 13px rgba(182,156,255,.14)); animation: galaxy-turn 42s linear infinite; }
+.galaxy-disc { position: absolute; z-index: 3; width: 55%; aspect-ratio: 2.18; right: 2.5%; top: 9%; transform: rotate(-18deg); transform-origin: center; filter: drop-shadow(0 0 13px rgba(182,156,255,.14)); animation: galaxy-float 9s ease-in-out infinite alternate; }
 .galaxy-ring { position: absolute; border: 1px solid rgba(182,156,255,.56); border-radius: 50%; background: transparent; box-shadow: inset 0 0 12px rgba(182,156,255,.025); }
 .galaxy-ring:nth-child(3n) { border-color: rgba(255,255,255,.32); }
 .galaxy-ring:nth-child(4n) { border-style: dashed; border-color: rgba(142,227,192,.28); }
@@ -223,7 +223,7 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
 .ornate-sword-blade i { position: absolute; left: -8px; top: 4px; width: 26px; height: 12px; border-top: 1px solid var(--peach); border-bottom: 1px solid var(--jade); transform: skewX(32deg); }
 
 @keyframes star-drift { to { transform: rotate(360deg); } }
-@keyframes galaxy-turn { to { transform: rotate(342deg); } }
+@keyframes galaxy-float { to { transform: rotate(-14deg) translateY(-8px) scale(1.02); } }
 @keyframes orbit-one { to { transform: rotate(343deg); } }
 @keyframes orbit-two { to { transform: rotate(348deg); } }
 @keyframes orbit-three { to { transform: rotate(338deg); } }
