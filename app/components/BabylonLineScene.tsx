@@ -1,5 +1,8 @@
 "use client";
 
+import * as B from "@babylonjs/core";
+import * as builder from "@babylonjs/core/Meshes/Builders/greasedLineBuilder.js";
+import * as materials from "@babylonjs/core/Materials/GreasedLine/greasedLineMaterialInterfaces.js";
 import { useEffect, useRef, useState } from "react";
 
 type SceneMode = "gamuda" | "platform";
@@ -25,24 +28,13 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let disposed = false;
-    let disposeScene = () => {};
-
-    void (async () => {
-      const [B, builder, materials] = await Promise.all([
-        import("@babylonjs/core"),
-        import("@babylonjs/core/Meshes/Builders/greasedLineBuilder.js"),
-        import("@babylonjs/core/Materials/GreasedLine/greasedLineMaterialInterfaces.js"),
-      ]);
-
-      if (disposed) return;
-
-      const engine = new B.Engine(canvas, true, {
-        antialias: true,
-        preserveDrawingBuffer: false,
-        stencil: false,
-        powerPreference: "high-performance",
-      });
+    let statusTimer: number | undefined;
+    const engine = new B.Engine(canvas, true, {
+      antialias: true,
+      preserveDrawingBuffer: false,
+      stencil: false,
+      powerPreference: "high-performance",
+    });
       const scene = new B.Scene(engine);
       scene.clearColor = new B.Color4(0, 0, 0, 0);
       scene.skipPointerMovePicking = true;
@@ -211,6 +203,7 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         );
 
         const beaconMaterial = new B.StandardMaterial("beacon-material", scene);
+        beaconMaterial.wireframe = true;
         beaconMaterial.disableLighting = true;
         beaconMaterial.emissiveColor = peach;
         const beacons = [
@@ -229,8 +222,9 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         actionRef.current = () => {
           beacons.forEach((beacon) => beacon.setEnabled(true));
           setStatus("AI preview · 3 matching developments surfaced");
-          window.setTimeout(() => {
-            if (!disposed) setStatus("Explore the connected property map");
+          window.clearTimeout(statusTimer);
+          statusTimer = window.setTimeout(() => {
+            setStatus("Explore the connected property map");
           }, 3800);
         };
       }
@@ -271,22 +265,27 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       const resize = new ResizeObserver(() => engine.resize());
       resize.observe(canvas);
 
-      disposeScene = () => {
-        observer.disconnect();
-        resize.disconnect();
-        scene.dispose();
-        engine.dispose();
-      };
-    });
-
     return () => {
-      disposed = true;
-      disposeScene();
+      window.clearTimeout(statusTimer);
+      observer.disconnect();
+      resize.disconnect();
+      scene.dispose();
+      engine.dispose();
     };
   }, [mode]);
 
   return (
     <div className={`babylon-stage babylon-${mode}`}>
+      <div className={`scene-fallback scene-fallback-${mode}`} aria-hidden="true">
+        <span className="scene-fallback-grid" />
+        <span className="scene-fallback-building scene-fallback-building-a" />
+        <span className="scene-fallback-building scene-fallback-building-b" />
+        <span className="scene-fallback-building scene-fallback-building-c" />
+        <span className="scene-fallback-route scene-fallback-route-a" />
+        <span className="scene-fallback-route scene-fallback-route-b" />
+        <span className="scene-fallback-node scene-fallback-node-a" />
+        <span className="scene-fallback-node scene-fallback-node-b" />
+      </div>
       <canvas ref={canvasRef} aria-label={`${mode} interactive line-art preview`} />
       <div className="scene-status" aria-live="polite">{status}</div>
       {mode === "platform" ? (

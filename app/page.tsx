@@ -1,7 +1,6 @@
-import { BabylonLineScene } from "./components/BabylonLineScene";
 import { EAUCosmos } from "./components/EAUCosmos";
-import { EAUMotion } from "./components/EAUMotion";
 import { GameMicroDemo } from "./components/GameMicroDemo";
+import { BabylonLineScene, EAUMotion } from "./components/InteractiveLoaders";
 import { LiveProductFrame } from "./components/LiveProductFrame";
 
 const solutions = [
@@ -77,6 +76,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-grid-glow" aria-hidden="true" />
+        <div className="hero-cosmos" aria-hidden="true"><EAUCosmos /></div>
         <div className="hero-copy">
           <p className="kicker"><span /> Kuala Lumpur, Malaysia</p>
           <h1>Building<br />digital worlds.</h1>
@@ -89,10 +89,6 @@ export default function Home() {
             <a className="primary-button" href="#work">Explore my work <span aria-hidden="true">↓</span></a>
             <a className="secondary-link" href="/card">Open digital card <Arrow /></a>
           </div>
-        </div>
-        <div className="hero-visual">
-          <div className="hero-visual-label"><span>EAU // 001</span><span>FULL-STACK · ARCHVIZ · GAMES</span></div>
-          <EAUCosmos />
         </div>
         <div className="proof-strip" aria-label="Selected career highlights">
           <div><strong>84%</strong><span>production 3D model reduction</span></div>

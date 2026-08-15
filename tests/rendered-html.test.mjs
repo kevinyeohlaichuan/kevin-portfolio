@@ -23,8 +23,8 @@ test("server-renders the complete portfolio", async () => {
   assert.match(html, /<title>Kevin Yeoh — Full-Stack Archviz, Interactive 3D &amp; Games<\/title>/i);
   assert.match(html, /Building/);
   assert.match(html, /digital worlds/);
-  assert.match(html, /MILKY WAY \/\/ EAU SECTOR 001/);
   assert.match(html, /flying cultivation sword/i);
+  assert.doesNotMatch(html, /MILKY WAY|EAU SECTOR 001|ORGANIC \+ MACHINE|神 · 魔 · 妖 · 人/);
   assert.match(html, /Architectural visualisation/);
   assert.match(html, /HauS on 15 — Gamuda SS15/);
   assert.match(html, /PHP and MySQL/);
@@ -40,16 +40,23 @@ test("server-renders the complete portfolio", async () => {
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
-test("keeps the finished portfolio responsive and accessible", async () => {
-  const [page, layout, css, packageJson] = await Promise.all([
+test("keeps the finished portfolio responsive, accessible and production-safe", async () => {
+  const [page, layout, css, packageJson, cosmos, babylon, game, gameRuntime, motion, loaders] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/EAUCosmos.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/BabylonLineScene.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/GameMicroDemo.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/GameCanvasRuntime.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/EAUMotion.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/InteractiveLoaders.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /aria-label="Primary navigation"/);
   assert.match(page, /<EAUCosmos \/>/);
+  assert.match(page, /className="hero-cosmos"/);
   assert.doesNotMatch(page, /BabylonLineScene mode="hero"/);
   assert.match(page, /aria-hidden="true"/);
   assert.match(layout, /metadataBase/);
@@ -57,7 +64,19 @@ test("keeps the finished portfolio responsive and accessible", async () => {
   assert.match(css, /@media \(max-width: 760px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /@keyframes sword-crossing/);
-  assert.match(css, /\.cosmos-planet/);
+  assert.doesNotMatch(css, /\.cosmos-planet|\.cosmos-nebula/);
+  assert.match(css, /\.scene-fallback/);
+  assert.match(css, /\.game-fallback/);
+  assert.doesNotMatch(cosmos, /MILKY WAY|EAU SECTOR 001|ORGANIC \+ MACHINE|cosmos-planet/);
+  assert.match(babylon, /import \* as B from "@babylonjs\/core"/);
+  assert.match(gameRuntime, /import Phaser from "phaser"/);
+  assert.match(motion, /import \{ gsap \} from "gsap"/);
+  assert.doesNotMatch(babylon, /import\("@babylonjs/);
+  assert.doesNotMatch(gameRuntime, /import\("phaser"\)/);
+  assert.match(game, /ssr: false/);
+  assert.doesNotMatch(motion, /import\("gsap/);
+  assert.match(loaders, /import dynamic from "next\/dynamic"/);
+  assert.match(loaders, /ssr: false/g);
   assert.match(packageJson, /"gsap": "3\.15\.0"/);
   assert.match(packageJson, /"@babylonjs\/core": "9\.21\.1"/);
   assert.match(packageJson, /"phaser": "4\.2\.1"/);
