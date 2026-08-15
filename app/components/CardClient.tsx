@@ -28,7 +28,7 @@ export function CardClient() {
     <main className="card-page">
       <div className="digital-card">
         <div className="digital-card-copy">
-          <Link className="wordmark" href="/" aria-label="Return to portfolio">
+          <Link className="wordmark" href="/" prefetch={false} aria-label="Return to portfolio">
             <span className="eau-seal"><b>E</b><b>A</b><b>U</b></span>
             <span>Eternal Amaris Universe</span>
           </Link>
@@ -45,7 +45,7 @@ export function CardClient() {
         </div>
         <div className="digital-card-visual"><EAUCosmos variant="card" /></div>
       </div>
-      <Link className="card-back-link" href="/">View full portfolio ↓</Link>
+      <Link className="card-back-link" href="/" prefetch={false}>View full portfolio ↓</Link>
     </main>
   );
 }
