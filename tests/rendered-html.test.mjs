@@ -24,7 +24,7 @@ test("server-renders the complete portfolio", async () => {
   assert.match(html, /Building/);
   assert.match(html, /digital worlds/);
   assert.match(html, /flying cultivation sword/i);
-  assert.doesNotMatch(html, /MILKY WAY|EAU SECTOR 001|ORGANIC \+ MACHINE|神 · 魔 · 妖 · 人/);
+  assert.doesNotMatch(html, /MILKY WAY|EAU SECTOR 001|ORGANIC \+ MACHINE|神 · 魔 · 妖 · 人|HUMAN SECTOR|CULTIVATION SECTOR/);
   assert.match(html, /Architectural visualisation/);
   assert.match(html, /HauS on 15 — Gamuda SS15/);
   assert.match(html, /PHP and MySQL/);
@@ -41,12 +41,13 @@ test("server-renders the complete portfolio", async () => {
 });
 
 test("keeps the finished portfolio responsive, accessible and production-safe", async () => {
-  const [page, layout, css, packageJson, cosmos, babylon, game, gameRuntime, motion, loaders] = await Promise.all([
+  const [page, layout, css, packageJson, cosmos, sword, babylon, game, gameRuntime, motion, loaders] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/components/EAUCosmos.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/OrnateSword.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/BabylonLineScene.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/GameMicroDemo.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/GameCanvasRuntime.tsx", import.meta.url), "utf8"),
@@ -64,13 +65,31 @@ test("keeps the finished portfolio responsive, accessible and production-safe", 
   assert.match(css, /@media \(max-width: 760px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /@keyframes sword-crossing/);
+  assert.match(css, /\.galaxy-ring-11/);
+  assert.doesNotMatch(css, /border-(?:left|right)-color:\s*transparent/);
   assert.doesNotMatch(css, /\.cosmos-planet|\.cosmos-nebula/);
   assert.match(css, /\.scene-fallback/);
   assert.match(css, /\.game-fallback/);
   assert.doesNotMatch(cosmos, /MILKY WAY|EAU SECTOR 001|ORGANIC \+ MACHINE|cosmos-planet/);
+  assert.match(cosmos, /length: 11/);
+  assert.match(cosmos, /cosmos-orbit-four/);
+  assert.match(cosmos, /<OrnateSword \/>/);
+  assert.match(sword, /guard-flame-upper/);
+  assert.match(sword, /ornate-sword-blade/);
   assert.match(babylon, /import \* as B from "@babylonjs\/core"/);
   assert.match(gameRuntime, /import Phaser from "phaser"/);
+  assert.match(gameRuntime, /default: "arcade"/);
+  assert.match(gameRuntime, /physics\.add\.overlap/);
+  assert.match(gameRuntime, /addKeys/);
+  assert.match(gameRuntime, /Keyboard\.JustDown/);
+  assert.match(gameRuntime, /\["搜", "打", "割"\]/);
   assert.match(motion, /import \{ gsap \} from "gsap"/);
+  assert.match(motion, /cursor-sword-anchor/);
+  assert.match(motion, /Math\.atan2/);
+  assert.match(motion, /gsap\.set\(sword, \{ x: event\.clientX, y: event\.clientY/);
+  assert.doesNotMatch(page, /HUMAN SECTOR|CULTIVATION SECTOR|flight-courier/);
+  assert.match(page, /flight-sword/);
+  assert.match(game, /aria-pressed/);
   assert.doesNotMatch(babylon, /import\("@babylonjs/);
   assert.doesNotMatch(gameRuntime, /import\("phaser"\)/);
   assert.match(game, /ssr: false/);

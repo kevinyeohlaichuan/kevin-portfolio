@@ -16,7 +16,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; background: var(--bg); }
+html { scroll-behavior: smooth; background: var(--bg); overflow-x: hidden; }
 body {
   margin: 0;
   background:
@@ -26,7 +26,7 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-sans), Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -130,8 +130,8 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
 .primary-button:hover { background: var(--violet); color: #111; box-shadow: 0 0 30px rgba(182,156,255,.2); }
 .secondary-link { color: var(--muted); text-decoration: none; font-size: 13px; border-bottom: 1px solid var(--muted-2); padding-bottom: 4px; }
 
-.eau-cosmos { position: relative; width: 100%; height: 100%; overflow: hidden; isolation: isolate; background-image: linear-gradient(rgba(182,156,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(182,156,255,.035) 1px,transparent 1px); background-size: 66px 66px; }
-.hero-cosmos .eau-cosmos { position: absolute; inset: -6% -8% -3% 18%; width: auto; height: auto; mask-image: linear-gradient(90deg,transparent 0%,black 22%,black 94%,transparent); }
+.eau-cosmos { position: relative; width: 100%; height: 100%; overflow: hidden; isolation: isolate; background-image: linear-gradient(rgba(182,156,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(182,156,255,.045) 1px,transparent 1px); background-size: 66px 66px; }
+.hero-cosmos .eau-cosmos { position: absolute; inset: 0; width: auto; height: auto; }
 .cosmos-starfield { position: absolute; inset: -12%; z-index: 1; background-repeat: repeat; transform-origin: 52% 48%; }
 .cosmos-stars-far {
   opacity: .56;
@@ -158,40 +158,82 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
   background-size: 367px 281px,419px 337px,461px 389px,503px 431px,557px 479px;
   animation: star-drift 54s linear infinite reverse;
 }
-.galaxy-disc { position: absolute; z-index: 2; width: 72%; aspect-ratio: 1.85; left: 18%; top: 25%; border: 1px solid rgba(182,156,255,.22); border-left-color: transparent; border-right-color: transparent; border-radius: 50%; transform: rotate(-18deg); background: none; filter: drop-shadow(0 0 13px rgba(182,156,255,.12)); animation: galaxy-float 9s ease-in-out infinite alternate; }
-.galaxy-core { position: absolute; width: 7%; aspect-ratio: 1; left: 46.5%; top: 41%; border: 1px solid var(--peach); border-radius: 50%; background: transparent; box-shadow: 0 0 16px rgba(255,184,147,.28); }
-.galaxy-core::before,.galaxy-core::after { content: ""; position: absolute; inset: -58%; border: 1px solid rgba(182,156,255,.28); border-radius: 50%; }
-.galaxy-core::after { inset: -145%; border-style: dashed; border-color: rgba(142,227,192,.2); }
-.galaxy-arm { position: absolute; left: 5%; top: 10%; width: 90%; height: 80%; border: 1px solid rgba(182,156,255,.34); border-left-color: transparent; border-right-color: transparent; border-radius: 50%; }
-.galaxy-arm::before { content: ""; position: absolute; inset: 13%; border-radius: 50%; border-top: 1px dashed rgba(255,255,255,.2); border-bottom: 1px dashed rgba(142,227,192,.22); }
-.galaxy-arm-one { transform: rotate(5deg); }
-.galaxy-arm-two { transform: rotate(48deg) scale(.82); opacity: .7; }
-.galaxy-arm-three { transform: rotate(94deg) scale(.64); opacity: .52; }
-.galaxy-arm-four { transform: rotate(142deg) scale(.46); opacity: .36; }
-.cosmos-orbit { position: absolute; z-index: 3; border: 1px solid rgba(255,255,255,.15); border-left-color: rgba(182,156,255,.5); border-radius: 50%; }
-.cosmos-orbit-outer { width: 90%; height: 55%; left: 7%; top: 22%; transform: rotate(-24deg); animation: orbit-outer 26s linear infinite; }
-.cosmos-orbit-inner { width: 57%; height: 34%; left: 25%; top: 35%; transform: rotate(14deg); animation: orbit-inner 18s linear infinite reverse; }
-.orbit-world { position: absolute; top: 7%; left: 23%; width: 12px; aspect-ratio: 1; border: 1px solid currentColor; border-radius: 50%; background: transparent; box-shadow: 0 0 12px currentColor; }
-.orbit-world-jade { color: var(--jade); }
-.orbit-world-peach { top: auto; bottom: 2%; left: auto; right: 18%; width: 9px; color: var(--peach); }
-.cosmos-sword-flight { position: absolute; z-index: 8; left: 8%; top: 73%; width: 116px; height: 34px; filter: drop-shadow(0 0 6px rgba(182,156,255,.5)); animation: sword-crossing 7.5s ease-in-out infinite; }
-.cosmos-sword-blade { position: absolute; left: 34px; top: 12px; width: 76px; height: 10px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--violet); background: transparent; transform: skewX(-16deg); }
-.cosmos-sword-blade::before { content: ""; position: absolute; right: -6px; top: -1px; width: 10px; height: 10px; border-top: 1px solid var(--ink); border-right: 1px solid var(--violet); transform: rotate(45deg) skewX(16deg) scale(.72); }
-.cosmos-sword-blade::after { content: ""; position: absolute; left: 13%; right: 7%; top: 4px; border-top: 1px solid rgba(255,255,255,.55); }
-.cosmos-sword-guard { position: absolute; left: 29px; top: 7px; width: 7px; height: 20px; border: 1px solid var(--peach); transform: rotate(12deg); }
-.cosmos-sword-handle { position: absolute; left: 9px; top: 13px; width: 23px; height: 7px; border-top: 1px solid var(--jade); border-bottom: 1px solid var(--jade); border-left: 1px solid rgba(142,227,192,.45); border-radius: 4px 0 0 4px; background: transparent; }
-.cosmos-sword-trail { position: absolute; right: 80%; top: 16px; width: 92px; border-top: 1px dashed rgba(142,227,192,.55); }
+.galaxy-disc { position: absolute; z-index: 3; width: 55%; aspect-ratio: 2.18; right: 2.5%; top: 9%; transform: rotate(-18deg); transform-origin: center; filter: drop-shadow(0 0 13px rgba(182,156,255,.14)); animation: galaxy-turn 42s linear infinite; }
+.galaxy-ring { position: absolute; border: 1px solid rgba(182,156,255,.56); border-radius: 50%; background: transparent; box-shadow: inset 0 0 12px rgba(182,156,255,.025); }
+.galaxy-ring:nth-child(3n) { border-color: rgba(255,255,255,.32); }
+.galaxy-ring:nth-child(4n) { border-style: dashed; border-color: rgba(142,227,192,.28); }
+.galaxy-ring-1 { inset: 0; }
+.galaxy-ring-2 { inset: 5.5% 5%; }
+.galaxy-ring-3 { inset: 11% 10%; }
+.galaxy-ring-4 { inset: 16.5% 15%; }
+.galaxy-ring-5 { inset: 22% 20%; }
+.galaxy-ring-6 { inset: 27.5% 25%; }
+.galaxy-ring-7 { inset: 33% 30%; }
+.galaxy-ring-8 { inset: 38.5% 35%; }
+.galaxy-ring-9 { inset: 43.5% 40%; }
+.galaxy-ring-10 { inset: 47.5% 44%; }
+.galaxy-ring-11 { inset: 50% 47%; border-color: var(--peach); box-shadow: 0 0 13px rgba(255,184,147,.35); }
+.galaxy-core { position: absolute; z-index: 2; width: 1.8%; aspect-ratio: 1; left: 49.1%; top: 49.1%; border: 1px solid var(--ink); border-radius: 50%; background: transparent; box-shadow: 0 0 12px rgba(255,255,255,.32); }
+.cosmos-orbit { position: absolute; z-index: 2; display: block; border: 1px solid rgba(182,156,255,.35); border-radius: 50%; transform-origin: center; }
+.cosmos-orbit i { position: absolute; width: 7px; aspect-ratio: 1; border: 1px solid currentColor; background: var(--bg); box-shadow: 0 0 10px currentColor; }
+.cosmos-orbit-one { width: 75%; height: 31%; right: 1%; top: 5%; color: var(--violet); transform: rotate(-17deg); animation: orbit-one 34s linear infinite; }
+.cosmos-orbit-one i { right: 19%; top: 3%; }
+.cosmos-orbit-two { width: 66%; height: 24%; right: 4%; top: 17%; color: var(--peach); border-color: rgba(255,184,147,.48); transform: rotate(-12deg); animation: orbit-two 29s linear infinite reverse; }
+.cosmos-orbit-two i { left: 21%; bottom: 2%; }
+.cosmos-orbit-three { width: 76%; height: 27%; right: 1.5%; top: 48%; color: var(--jade); border-color: rgba(142,227,192,.38); transform: rotate(-22deg); animation: orbit-three 31s linear infinite; }
+.cosmos-orbit-three i { right: 17%; bottom: 5%; }
+.cosmos-orbit-four { width: 87%; height: 25%; right: -1%; top: 61%; color: var(--peach); border-color: rgba(255,184,147,.35); transform: rotate(-25deg); animation: orbit-four 38s linear infinite reverse; }
+.cosmos-orbit-four i { left: 15%; top: 5%; }
+.cosmos-spark { position: absolute; z-index: 4; width: 13px; height: 13px; color: var(--violet); opacity: .85; }
+.cosmos-spark::before,.cosmos-spark::after { content: ""; position: absolute; left: 50%; top: 0; height: 100%; border-left: 1px solid currentColor; }
+.cosmos-spark::after { left: 0; top: 50%; width: 100%; height: 0; border-left: 0; border-top: 1px solid currentColor; }
+.cosmos-spark-one { right: 42%; top: 15%; }
+.cosmos-spark-two { right: 12%; top: 38%; color: var(--peach); transform: scale(.72); }
+.cosmos-spark-three { right: 30%; top: 61%; color: var(--jade); transform: scale(.65); }
+.cosmos-spark-four { right: 7%; top: 78%; transform: scale(.55); }
+.cosmos-sword-flight { position: absolute; z-index: 8; left: 55%; top: 65%; width: 220px; height: 68px; filter: drop-shadow(0 0 7px rgba(182,156,255,.55)); animation: sword-crossing 8.5s ease-in-out infinite; }
+
+.ornate-sword { position: relative; display: block; width: 220px; height: 68px; color: var(--violet); }
+.ornate-sword-trails { position: absolute; right: calc(100% - 36px); top: 26px; width: 118px; height: 20px; opacity: .48; }
+.ornate-sword-trails i { position: absolute; right: 0; width: 100%; border-top: 1px solid currentColor; }
+.ornate-sword-trails i:nth-child(1) { top: 2px; transform: rotate(-4deg); }
+.ornate-sword-trails i:nth-child(2) { top: 9px; width: 82%; color: var(--jade); }
+.ornate-sword-trails i:nth-child(3) { top: 16px; width: 64%; transform: rotate(4deg); color: var(--peach); }
+.ornate-sword-pommel { position: absolute; left: 4px; top: 22px; width: 24px; aspect-ratio: 1; border: 1px solid var(--violet); border-radius: 50%; box-shadow: 0 0 7px rgba(182,156,255,.35); }
+.ornate-sword-pommel i { position: absolute; inset: 5px; border: 1px solid rgba(245,240,255,.75); border-radius: 50%; }
+.ornate-sword-grip { position: absolute; left: 27px; top: 28px; width: 56px; height: 12px; border-top: 1px solid var(--violet); border-bottom: 1px solid var(--violet); transform: skewX(-14deg); }
+.ornate-sword-grip::before,.ornate-sword-grip::after { content: ""; position: absolute; top: 2px; bottom: 2px; border-left: 1px solid rgba(245,240,255,.42); }
+.ornate-sword-grip::before { left: 16px; }
+.ornate-sword-grip::after { right: 16px; }
+.ornate-sword-grip i { position: absolute; top: -4px; height: 18px; border-left: 1px solid rgba(142,227,192,.52); }
+.ornate-sword-grip i:nth-child(1) { left: 9px; }.ornate-sword-grip i:nth-child(2) { left: 28px; }.ornate-sword-grip i:nth-child(3) { left: 46px; }
+.ornate-sword-guard { position: absolute; z-index: 2; left: 78px; top: 8px; width: 48px; height: 52px; filter: drop-shadow(0 0 4px rgba(182,156,255,.38)); }
+.guard-knot { position: absolute; left: 17px; top: 18px; width: 16px; aspect-ratio: 1; border: 1px solid var(--ink); transform: rotate(45deg); }
+.guard-knot::before { content: ""; position: absolute; inset: 3px; border: 1px solid var(--peach); }
+.guard-flame { position: absolute; left: 18px; width: 34px; height: 20px; border: 1px solid var(--violet); border-left: 0; border-radius: 5% 80% 18% 65%; }
+.guard-flame::after { content: ""; position: absolute; left: 4px; right: 7px; top: 7px; height: 7px; border-top: 1px solid rgba(245,240,255,.75); border-radius: 50%; }
+.guard-flame-upper { top: 1px; transform: rotate(-18deg) skewX(-18deg); }
+.guard-flame-lower { bottom: 1px; transform: rotate(18deg) skewX(18deg) scaleY(-1); }
+.guard-hook { position: absolute; left: -2px; width: 28px; height: 19px; border: 1px solid var(--violet); border-right: 0; border-radius: 80% 10% 65% 20%; }
+.guard-hook-upper { top: 4px; transform: rotate(24deg); }
+.guard-hook-lower { bottom: 4px; transform: rotate(-24deg) scaleY(-1); }
+.ornate-sword-blade { position: absolute; left: 112px; top: 23px; width: 101px; height: 22px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--violet); transform: skewX(-25deg); }
+.ornate-sword-blade::before { content: ""; position: absolute; left: 8px; right: 5px; top: 10px; border-top: 1px solid rgba(245,240,255,.55); }
+.ornate-sword-blade::after { content: ""; position: absolute; right: -9px; top: 2px; width: 17px; height: 17px; border-top: 1px solid var(--ink); border-right: 1px solid var(--violet); transform: rotate(45deg) skewX(25deg) scale(.78); }
+.ornate-sword-blade i { position: absolute; left: -8px; top: 4px; width: 26px; height: 12px; border-top: 1px solid var(--peach); border-bottom: 1px solid var(--jade); transform: skewX(32deg); }
 
 @keyframes star-drift { to { transform: rotate(360deg); } }
-@keyframes galaxy-float { to { transform: rotate(-14deg) translateY(-10px) scale(1.03); } }
-@keyframes orbit-outer { to { transform: rotate(336deg); } }
-@keyframes orbit-inner { to { transform: rotate(374deg); } }
+@keyframes galaxy-turn { to { transform: rotate(342deg); } }
+@keyframes orbit-one { to { transform: rotate(343deg); } }
+@keyframes orbit-two { to { transform: rotate(348deg); } }
+@keyframes orbit-three { to { transform: rotate(338deg); } }
+@keyframes orbit-four { to { transform: rotate(335deg); } }
 @keyframes sword-crossing {
-  0% { left: 5%; top: 78%; transform: rotate(-18deg) scale(.78); opacity: .45; }
-  18% { opacity: 1; }
-  48% { left: 48%; top: 48%; transform: rotate(-24deg) scale(1.08); opacity: 1; }
+  0% { transform: translate(-8%,18%) rotate(-18deg) scale(.84); opacity: .58; }
+  24% { opacity: 1; }
+  52% { transform: translate(34%,-46%) rotate(-23deg) scale(1.04); opacity: 1; }
   82% { opacity: 1; }
-  100% { left: 84%; top: 15%; transform: rotate(-18deg) scale(.72); opacity: .35; }
+  100% { transform: translate(70%,-94%) rotate(-18deg) scale(.82); opacity: .5; }
 }
 
 .proof-strip { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--line); background: linear-gradient(90deg,rgba(8,10,14,.94),rgba(8,10,14,.54)); backdrop-filter: blur(4px); }
@@ -274,15 +316,11 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
 .frame-toolbar button { border: 0; background: transparent; color: var(--violet); cursor: pointer; }
 
 .flight-divider { width: min(calc(100% - 48px),var(--max)); height: 240px; margin: 0 auto; position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
-.flight-label { position: absolute; top: 30px; left: 0; color: var(--muted-2); font: 500 9px/1 var(--font-geist-mono),monospace; letter-spacing: .14em; }
-.flight-path { position: absolute; left: -8%; right: -8%; top: 55%; border-top: 1px dashed rgba(182,156,255,.24); transform: rotate(-2deg); }
-.flight-courier { position: absolute; top: 48%; left: -100px; width: 90px; height: 60px; filter: drop-shadow(0 0 12px rgba(142,227,192,.55)); }
-.courier-head { position: absolute; left: 30px; top: 0; width: 15px; height: 15px; border: 2px solid var(--jade); border-radius: 50% 50% 38% 38%; }
-.courier-body { position: absolute; left: 25px; top: 17px; width: 26px; height: 32px; border: 2px solid var(--jade); border-top: 0; transform: skewX(-8deg); }
-.courier-body::before,.courier-body::after { content: ""; position: absolute; top: 5px; width: 28px; border-top: 2px solid var(--jade); }
-.courier-body::before { right: 20px; transform: rotate(-12deg); }
-.courier-body::after { left: 20px; transform: rotate(20deg); }
-.courier-sword { position: absolute; left: 5px; bottom: 2px; width: 82px; height: 7px; border-top: 1px solid var(--violet); border-bottom: 1px solid rgba(245,240,255,.55); background: transparent; filter: drop-shadow(0 0 5px rgba(182,156,255,.5)); transform: rotate(-5deg) skewX(-14deg); }
+.flight-path { position: absolute; left: -8%; right: -8%; top: 55%; height: 66px; border-top: 1px solid rgba(182,156,255,.2); border-radius: 50%; transform: rotate(-3deg); }
+.flight-path::before,.flight-path::after { content: ""; position: absolute; left: 6%; right: 7%; height: 38px; border-top: 1px solid rgba(142,227,192,.17); border-radius: 50%; }
+.flight-path::before { top: 15px; transform: rotate(2deg); }.flight-path::after { top: 31px; border-color: rgba(255,184,147,.14); transform: rotate(-1deg); }
+.flight-sword { position: absolute; top: 43%; left: -220px; width: 220px; height: 68px; filter: drop-shadow(0 0 10px rgba(182,156,255,.52)); }
+.flight-sword .ornate-sword { transform: scale(.72); transform-origin: center; }
 
 .games-section { position: relative; }
 .games-section::before { content: ""; position: absolute; inset: 8% -30% auto; height: 680px; z-index: -1; background: radial-gradient(circle,rgba(182,156,255,.08),transparent 60%); }
@@ -320,6 +358,12 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
 .game-active-copy { padding: 25px; display: flex; justify-content: space-between; gap: 30px; align-items: center; border-top: 1px solid var(--line); }
 .game-active-copy p { max-width: 760px; margin: 0; color: var(--muted); line-height: 1.55; }
 .game-active-copy a,.game-active-copy span { flex: 0 0 auto; color: var(--violet); text-decoration: none; font-size: 12px; }
+.system-console { padding: 20px 24px; display: grid; grid-template-columns: minmax(300px,.72fr) 1fr; gap: 22px; align-items: center; border-top: 1px solid var(--line); background: rgba(182,156,255,.035); }
+.system-directives { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.system-directives button { min-height: 58px; padding: 9px 10px; display: grid; grid-template-columns: auto 1fr; gap: 9px; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; text-align: left; }
+.system-directives button:hover,.system-directives button[aria-pressed="true"] { border-color: var(--violet); color: var(--ink); background: rgba(182,156,255,.07); }
+.system-directives strong { color: var(--violet); font-size: 22px; font-weight: 520; }.system-directives span { font-size: 10px; line-height: 1.25; }
+.system-console output { color: var(--muted); font: 500 11px/1.55 var(--font-geist-mono),monospace; }
 
 .capability-list { border-top: 1px solid var(--line); }
 .capability-list article { display: grid; grid-template-columns: 80px .8fr 1.3fr; gap: 30px; align-items: center; padding: 38px 0; border-bottom: 1px solid var(--line); }
@@ -338,12 +382,9 @@ nav a:hover, .header-cta:hover { color: var(--ink); }
 footer { width: min(calc(100% - 48px),var(--max)); margin: 0 auto; padding: 30px 0 36px; display: flex; justify-content: space-between; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
 
 .cursor-system { display: block; pointer-events: none; }
-.cursor-core,.cursor-sword { position: fixed; top: 0; left: 0; z-index: 1000; pointer-events: none; opacity: 0; }
-.cursor-core { width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 1px solid var(--jade); border-radius: 50%; box-shadow: 0 0 12px var(--jade); }
-.cursor-sword { width: 72px; height: 10px; transform-origin: right center; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--violet); background: transparent; filter: drop-shadow(0 0 5px rgba(182,156,255,.55)); }
-.cursor-sword::before { content: ""; position: absolute; left: -7px; top: -5px; width: 6px; height: 20px; border: 1px solid var(--peach); }
-.cursor-sword::after { content: ""; position: absolute; left: -30px; top: 1px; width: 24px; height: 7px; border-top: 1px solid var(--jade); border-bottom: 1px solid var(--jade); border-left: 1px solid rgba(142,227,192,.42); border-radius: 4px 0 0 4px; background: transparent; }
-.cursor-sword i { position: absolute; right: 100%; top: 4px; width: 74px; border-top: 1px dashed rgba(142,227,192,.5); }
+.cursor-sword-anchor { position: fixed; top: 0; left: 0; z-index: 1000; width: 0; height: 0; pointer-events: none; opacity: 0; transform-origin: 0 0; }
+.cursor-sword-anchor .ornate-sword { position: absolute; right: -4px; top: 0; transform: translateY(-50%) scale(.46); transform-origin: right center; filter: drop-shadow(0 0 5px rgba(182,156,255,.55)); }
+.cursor-sword-anchor .ornate-sword-trails { opacity: .26; }
 
 .card-page { min-height: 100svh; padding: 40px; display: grid; place-items: center; position: relative; }
 .digital-card { width: min(1280px,100%); min-height: 660px; display: grid; grid-template-columns: .9fr 1.1fr; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; background: #0c0e13; box-shadow: 0 30px 100px rgba(0,0,0,.45); }
@@ -351,7 +392,7 @@ footer { width: min(calc(100% - 48px),var(--max)); margin: 0 auto; padding: 30px
 .digital-card h1 { font-size: clamp(70px,8vw,118px); margin: 30px 0 24px; }
 .digital-card-copy > div > p:last-child { max-width: 560px; color: var(--muted); line-height: 1.6; }
 .digital-card-visual { min-height: 660px; position: relative; border-left: 1px solid var(--line); background: #070910; }
-.eau-cosmos-card .galaxy-disc { width: 84%; left: 8%; top: 28%; }
+.eau-cosmos-card .galaxy-disc { width: 88%; right: 5%; top: 24%; }
 .eau-cosmos-card .cosmos-sword-flight { animation-duration: 6.8s; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .card-actions a,.card-actions button { padding: 12px 15px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink); text-decoration: none; cursor: pointer; font-size: 12px; }
@@ -363,7 +404,8 @@ footer { width: min(calc(100% - 48px),var(--max)); margin: 0 auto; padding: 30px
   nav { display: none; }
   .hero { min-height: auto; padding-top: 80px; flex-direction: column; align-items: stretch; }
   .hero-copy { width: min(720px,78%); padding-bottom: 76px; }
-  .hero-cosmos .eau-cosmos { inset: 0 -24% 0 18%; }
+  .hero-cosmos .eau-cosmos { inset: 0; }
+  .galaxy-disc { width: 68%; right: 1%; top: 16%; }
   .proof-strip { position: relative; margin-top: 18px; }
   .section-heading { grid-template-columns: 1fr; }
   .section-heading h2,.section-heading > p:last-child { grid-column: 1; }
@@ -381,13 +423,15 @@ footer { width: min(calc(100% - 48px),var(--max)); margin: 0 auto; padding: 30px
   .wordmark > span:last-child { display: none; }
   .hero { padding-top: 56px; }
   .hero-copy { width: 100%; padding-bottom: 64px; }
-  .hero-cosmos .eau-cosmos { inset: 23% -48% 10% -5%; opacity: .66; }
+  .hero-cosmos .eau-cosmos { inset: 18% 0 8%; opacity: .64; }
   .hero-cosmos::after { background: linear-gradient(180deg,rgba(8,10,14,.92),rgba(8,10,14,.58) 46%,rgba(8,10,14,.76)); }
   .hero h1 { font-size: clamp(58px,17vw,84px); }
   .hero-intro { font-size: 16px; margin-top: 34px; }
-  .galaxy-disc { width: 92%; left: 4%; top: 31%; }
-  .cosmos-sword-flight { width: 92px; transform-origin: center; }
-  .cosmos-sword-blade { width: 60px; }
+  .galaxy-disc { width: 94%; right: 3%; top: 27%; }
+  .cosmos-orbit-one { width: 94%; right: 2%; top: 11%; }.cosmos-orbit-two { width: 84%; right: 8%; top: 22%; }
+  .cosmos-orbit-three { width: 92%; right: 3%; top: 55%; }.cosmos-orbit-four { width: 96%; right: 2%; top: 68%; }
+  .cosmos-sword-flight { left: 0; top: 72%; transform-origin: center; }
+  .cosmos-sword-flight .ornate-sword { transform: scale(.64); transform-origin: left center; }
   .proof-strip { grid-template-columns: repeat(2,1fr); }
   .proof-strip div:nth-child(2) { border-right: 0; }
   .proof-strip div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
@@ -416,6 +460,8 @@ footer { width: min(calc(100% - 48px),var(--max)); margin: 0 auto; padding: 30px
   .game-stage-shell,.game-canvas { min-height: 360px; height: 360px; }
   .game-stage-topline span:first-child { display: none; }
   .game-stage-topline { justify-content: flex-end; }
+  .system-console { grid-template-columns: 1fr; padding: 18px; }
+  .system-directives button { grid-template-columns: 1fr; gap: 4px; text-align: center; }.system-directives span { font-size: 8px; }
   .game-selector { grid-template-columns: 1fr; }
   .game-selector button { min-height: 110px; border-right: 0; border-bottom: 1px solid var(--line); }
   .game-selector button:last-child { border-bottom: 0; }
@@ -439,5 +485,5 @@ footer { width: min(calc(100% - 48px),var(--max)); margin: 0 auto; padding: 30px
   html { scroll-behavior: auto; }
   *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .cursor-system { display: none; }
-  .flight-courier { left: 55%; }
+  .flight-sword { left: 55%; transform: rotate(-12deg); }
 }

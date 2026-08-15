@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
+import type { SystemAction, SystemDirective } from "./GameCanvasRuntime";
 
 type GameMode = "system" | "nasi" | "infinity";
 
@@ -27,14 +28,14 @@ const gameCopy: Record<GameMode, { index: string; title: string; status: string;
     index: "01",
     title: "I Got a System",
     status: "Current WIP · Godot",
-    instruction: "Click to guide the host",
-    description: "A cultivation game where you are the System: a floating companion that teaches an autonomous host.",
+    instruction: "Set a priority; the host keeps acting",
+    description: "A cultivation game where you are the System: set behavioural priorities, watch an autonomous host act, then review the result.",
   },
   nasi: {
     index: "02",
     title: "Nasi Lemak Survivors",
     status: "Released · Google Play",
-    instruction: "Move the pointer to survive",
+    instruction: "Move pointer or touch · collision resets",
     description: "A Malaysian survivor roguelite built end to end in Godot, including gameplay, pixel art, animation and release.",
     href: "https://play.google.com/store/apps/details?id=com.eternalamaris.nasilemak.survivors",
   },
@@ -42,7 +43,7 @@ const gameCopy: Record<GameMode, { index: string; title: string; status: string;
     index: "03",
     title: "To Infinity and Beyond",
     status: "Released · Itch.io",
-    instruction: "Click or press Space to jump",
+    instruction: "← → / A D to move · Space or tap to jump",
     description: "A solo-developed precision platformer designed, programmed, illustrated, animated and published in Godot.",
     href: "https://kevin-d-eternal.itch.io/to-infinity-and-beyond",
   },
@@ -50,7 +51,14 @@ const gameCopy: Record<GameMode, { index: string; title: string; status: string;
 
 export function GameMicroDemo() {
   const [mode, setMode] = useState<GameMode>("system");
+  const [directive, setDirective] = useState<SystemDirective>({ action: "搜", version: 0 });
+  const [systemResult, setSystemResult] = useState("Autonomous loop starting · Waiting for the host’s first result.");
   const active = gameCopy[mode];
+
+  const directHost = (action: SystemAction) => {
+    setDirective((current) => ({ action, version: current.version + 1 }));
+    setSystemResult(`${action} priority sent · The host will interpret it inside the autonomous loop.`);
+  };
 
   return (
     <div className="game-showcase">
@@ -59,8 +67,31 @@ export function GameMicroDemo() {
           <span>EAU interactive vignette</span>
           <span>{active.instruction}</span>
         </div>
-        <GameCanvas mode={mode} title={active.title} />
+        <GameCanvas
+          mode={mode}
+          title={active.title}
+          systemDirective={directive}
+          onSystemResult={setSystemResult}
+        />
       </div>
+      {mode === "system" ? (
+        <div className="system-console" aria-label="System behaviour controls">
+          <div className="system-directives">
+            {(["搜", "打", "割"] as SystemAction[]).map((action) => (
+              <button
+                type="button"
+                aria-pressed={directive.action === action}
+                onClick={() => directHost(action)}
+                key={action}
+              >
+                <strong>{action}</strong>
+                <span>{action === "搜" ? "Seek priority" : action === "打" ? "Engage priority" : "Harvest priority"}</span>
+              </button>
+            ))}
+          </div>
+          <output aria-live="polite">{systemResult}</output>
+        </div>
+      ) : null}
       <div className="game-selector" role="tablist" aria-label="Game projects">
         {(Object.keys(gameCopy) as GameMode[]).map((key) => {
           const item = gameCopy[key];

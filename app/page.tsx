@@ -2,6 +2,7 @@ import { EAUCosmos } from "./components/EAUCosmos";
 import { GameMicroDemo } from "./components/GameMicroDemo";
 import { BabylonLineScene, EAUMotion } from "./components/InteractiveLoaders";
 import { LiveProductFrame } from "./components/LiveProductFrame";
+import { OrnateSword } from "./components/OrnateSword";
 
 const solutions = [
   {
@@ -177,9 +178,8 @@ export default function Home() {
       </section>
 
       <div className="flight-divider" aria-hidden="true">
-        <span className="flight-label">HUMAN SECTOR // CULTIVATION SECTOR</span>
         <div className="flight-path" />
-        <div className="flight-courier"><span className="courier-head" /><span className="courier-body" /><span className="courier-sword" /></div>
+        <div className="flight-sword"><OrnateSword /></div>
       </div>
 
       <section className="section games-section" id="games">
