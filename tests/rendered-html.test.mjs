@@ -45,13 +45,22 @@ test("every route prerenders with a title, an h1 and its own description", async
   );
 });
 
-test("the homepage ships no eager JavaScript", async () => {
+test("the homepage's eager JavaScript stays at the router and nothing else", async () => {
   const page = await html("");
 
-  // Astro islands hydrate from inline bootstrap; nothing should be a blocking
-  // external script. This is the guard against the 1.7 MB regression.
+  // One deliberate exception to zero-eager-JS: the view transitions router.
+  // It buys cross-route morphing and client-side navigation for ~5 KB gzip.
+  // Everything else must hydrate from an island directive. This is the guard
+  // against sliding back toward the 1.7 MB vinext homepage.
   const eager = [...page.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(eager, [], `unexpected eager scripts: ${eager.join(", ")}`);
+  assert.equal(eager.length, 1, `unexpected eager scripts: ${eager.join(", ")}`);
+  assert.match(eager[0], /ClientRouter/, `unexpected eager script: ${eager[0]}`);
+
+  const routerSize = await gzipSize(new URL(`.${eager[0]}`, dist));
+  assert.ok(
+    routerSize < 10_000,
+    `router grew to ${Math.round(routerSize / 1024)} KB gzip, ceiling is 10 KB`,
+  );
 
   const inlineBytes = [...page.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)]
     .reduce((total, match) => total + Buffer.byteLength(match[1]), 0);
@@ -167,5 +176,89 @@ test("no Next or vinext remnants survive", async () => {
   assert.equal(pkg.scripts.build, "astro build");
   for (const file of ["next.config.ts", "next-env.d.ts", "vite.config.ts", "app"]) {
     assert.ok(!existsSync(new URL(file, root)), `${file} still exists`);
+  }
+});
+
+test("the command palette is keyboard-first and content-driven", async () => {
+  const palette = await source("src/components/CommandPalette.tsx");
+
+  // Opens on both the conventional shortcut and a bare slash.
+  assert.match(palette, /metaKey \|\| event\.ctrlKey/);
+  assert.match(palette, /event\.key === "\/"/);
+  assert.match(palette, /event\.key === "Escape"/);
+  assert.match(palette, /ArrowDown/);
+  assert.match(palette, /ArrowUp/);
+
+  // Dialog semantics, not a styled div.
+  assert.match(palette, /role="dialog"/);
+  assert.match(palette, /aria-modal="true"/);
+  assert.match(palette, /role="listbox"/);
+  assert.match(palette, /role="option"/);
+  assert.match(palette, /aria-activedescendant/);
+
+  // Every route reachable from the palette must be in the built output.
+  const home = await html("");
+  for (const slug of ["/work", "/games", "/universe", "/about", "/card"]) {
+    assert.ok(home.includes(slug), `palette target ${slug} missing from page`);
+  }
+});
+
+test("the mesh visualiser uses the real project numbers", async () => {
+  const mesh = await source("src/components/MeshBudget.tsx");
+  assert.match(mesh, /SOURCE_MB = 239\.8/);
+  assert.match(mesh, /SHIPPED_MB = 34\.6/);
+
+  // Canvas 2D on purpose — no second WebGL context on the homepage.
+  // Checks real usage, not the word: the file's own comment says "WebGL".
+  assert.match(mesh, /getContext\("2d"\)/);
+  assert.doesNotMatch(mesh, /from "@babylonjs/);
+  assert.doesNotMatch(mesh, /getContext\(["']webgl/i);
+  assert.match(mesh, /prefers-reduced-motion/);
+});
+
+test("pixel art is authored, not filtered", async () => {
+  const pixel = await source("src/components/PixelVigil.tsx");
+
+  // Hand-authored sprite rows and a fixed palette.
+  assert.match(pixel, /const FIGURE = \[/);
+  assert.match(pixel, /const SWORD = \[/);
+  assert.match(pixel, /const PALETTE/);
+
+  // Integer scaling and smoothing off, or it stops being pixel art.
+  assert.match(pixel, /imageSmoothingEnabled = false/);
+  assert.match(pixel, /Math\.floor\(parent\.clientWidth \/ W\)/);
+  assert.match(pixel, /prefers-reduced-motion/);
+
+  const css = await source("src/styles/global.css");
+  assert.match(css, /image-rendering: pixelated/);
+});
+
+test("the site commits to one theme rather than shipping a broken second one", async () => {
+  const css = await source("src/styles/global.css");
+
+  // The identity is glowing line art on void. A light ground would need the
+  // cosmos, sword and every glow redrawn, so the dark commitment is explicit
+  // and declared, not accidental.
+  assert.match(css, /color-scheme: dark/);
+  assert.doesNotMatch(css, /\[data-theme="light"\]/);
+  assert.ok(!existsSync(new URL("src/components/ThemeToggle.astro", root)));
+
+  for (const route of ["", "about/"]) {
+    const page = await html(route);
+    assert.match(page, /name="color-scheme" content="dark"/, `${route} does not declare its scheme`);
+  }
+});
+
+test("view transitions and landmarks are wired", async () => {
+  const css = await source("src/styles/global.css");
+  assert.match(css, /@view-transition/);
+
+  const layout = await source("src/layouts/Base.astro");
+  assert.match(layout, /ClientRouter/);
+
+  for (const route of ["", "about/", "games/", "universe/"]) {
+    const page = await html(route);
+    assert.match(page, /class="skip-link"/, `${route} has no skip link`);
+    assert.match(page, /id="main"/, `${route} has no main landmark target`);
   }
 });

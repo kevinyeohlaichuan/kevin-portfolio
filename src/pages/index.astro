@@ -6,6 +6,8 @@ import { EAUMotion } from "../components/EAUMotion";
 import { OrnateSword } from "../components/OrnateSword";
 import { BabylonLineScene } from "../components/BabylonLineScene";
 import { GameMicroDemo } from "../components/GameMicroDemo";
+import { MeshBudget } from "../components/MeshBudget";
+import { PixelVigil } from "../components/PixelVigil";
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 
@@ -62,7 +64,7 @@ const capabilities = [
   title="Kevin Yeoh — Full-Stack Archviz, Interactive 3D & Games"
   description="Architectural visualisation products, interactive 3D systems and games by Kevin Yeoh in Kuala Lumpur, Malaysia."
 >
-  <main>
+  <main id="main">
     <EAUMotion client:idle />
 
     <SiteHeader />
@@ -141,6 +143,19 @@ const capabilities = [
       </div>
     </section>
 
+    <section class="section budget-section" id="budget">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> The constraint that decides everything</p>
+        <h2>Nobody waits for<br />a building to load.</h2>
+        <p>
+          Every archviz project is the same negotiation: geometry against payload.
+          Drag the slider — the mesh really decimates, and the numbers are the ones
+          from Gamuda SS15.
+        </p>
+      </div>
+      <MeshBudget client:visible />
+    </section>
+
     <div class="flight-divider" aria-hidden="true">
       <div class="flight-path"></div>
       <div class="flight-sword"><OrnateSword /></div>
@@ -153,6 +168,21 @@ const capabilities = [
         <p>Short interactive line-art vignettes carry the feel. The complete games live beyond the portfolio.</p>
       </div>
       <GameMicroDemo client:visible />
+
+      <div class="craft-row">
+        <PixelVigil client:visible />
+        <div class="craft-copy">
+          <p class="kicker"><span></span> Seven years of pixel practice</p>
+          <h3>The art is not bought.</h3>
+          <p>
+            Sprites, animation and palettes for the games are drawn the same way
+            this scene is: a small buffer, a fixed palette, integer scaling and a
+            step timer. Constraints are the medium, not a limitation to work around.
+          </p>
+          <a class="text-link" href="/universe">Where it all takes place <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+
       <p class="section-more">
         <a class="text-link" href="/games">All games <span aria-hidden="true">↗</span></a>
         <a class="text-link" href="/universe">Enter the universe <span aria-hidden="true">↗</span></a>

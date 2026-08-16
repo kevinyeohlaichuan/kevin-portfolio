@@ -46,13 +46,37 @@ docs/legacy-site/  archive of the GitHub Pages era, kept as a record
 tests/           runtime assertions against dist/
 ```
 
+## What's on the page
+
+- **Asset-budget visualiser** (`MeshBudget.tsx`) — a wireframe tower whose
+  lattice really decimates as you drag. Triangle count and payload are derived
+  from the Gamuda SS15 numbers (239.8 MB source, 34.6 MB shipped), so the
+  fidelity-versus-payload tradeoff is demonstrated instead of claimed.
+  Canvas 2D, no engine, no second WebGL context.
+- **Command palette** (`CommandPalette.tsx`) — `⌘K` or `/`. Ranked search over
+  every case study, game and universe entry, with arrow-key navigation and
+  full listbox semantics.
+- **Pixel scene** (`PixelVigil.tsx`) — hand-authored sprites on a fixed
+  14-colour palette, 128×80 buffer, integer upscaling, 12 fps step timer.
+- **Babylon line scenes** for the archviz previews, **Phaser** vignettes behind
+  an explicit click, **GSAP** for the sword cursor and scroll motion.
+- **View transitions** between routes via Astro's `ClientRouter`.
+
+## Theme
+
+The site deliberately commits to one visual world. The identity is glowing
+line art on void; a light ground would require the cosmos, sword and every
+glow to be redrawn, which is a redesign rather than a token swap. `color-scheme`
+is declared explicitly so form controls and scrollbars follow.
+
 ## Performance rules
 
 These are enforced by `tests/rendered-html.test.mjs`, so a regression fails the
 build rather than being discovered a year later.
 
-- The homepage ships **no eager external JavaScript**. Islands hydrate from a
-  small inline bootstrap.
+- The homepage ships **exactly one eager external script**: the view-transitions
+  router, ~5 KB gzip, capped at 10 KB by test. Everything else hydrates from an
+  island directive.
 - **Babylon is deep-imported**, never as a namespace. A namespace import
   disables tree-shaking and costs about 1 MB gzip.
 - Babylon deep imports target the side-effect wrapper modules, not the `.pure`

@@ -4,6 +4,7 @@ import Base from "../../layouts/Base.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import { BabylonLineScene } from "../../components/BabylonLineScene";
+import { MeshBudget } from "../../components/MeshBudget";
 
 export const prerender = true;
 
@@ -29,7 +30,7 @@ const schema = {
 ---
 
 <Base title={`${entry.data.title} — Kevin Yeoh`} description={entry.data.summary}>
-  <main>
+  <main id="main">
     <SiteHeader current="work" />
 
     <article class="entry-detail">
@@ -56,6 +57,13 @@ const schema = {
           {entry.data.scope.map((item) => <span>{item}</span>)}
         </div>
       </div>
+
+      {entry.data.demo === "gamuda" && (
+        <section class="entry-budget">
+          <h2 class="meta-heading">The reduction, interactively</h2>
+          <MeshBudget client:visible />
+        </section>
+      )}
 
       <div class="entry-body">
         <Content />

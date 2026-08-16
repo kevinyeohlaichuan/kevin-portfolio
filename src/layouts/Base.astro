@@ -1,4 +1,7 @@
 ---
+import { ClientRouter } from "astro:transitions";
+import { getCollection } from "astro:content";
+import { CommandPalette, type PaletteItem } from "../components/CommandPalette";
 import "../styles/global.css";
 
 interface Props {
@@ -19,6 +22,45 @@ const {
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL(image, Astro.site);
+
+const [work, games, universe] = await Promise.all([
+  getCollection("work"),
+  getCollection("games"),
+  getCollection("universe"),
+]);
+
+const paletteItems: PaletteItem[] = [
+  { title: "Home", href: "/", section: "Go to", hint: "Building digital worlds" },
+  { title: "Professional work", href: "/work", section: "Go to", hint: "Archviz case studies" },
+  { title: "Games", href: "/games", section: "Go to", hint: "Spicy MSG Studio" },
+  { title: "Eternal Amaris Universe", href: "/universe", section: "Go to", hint: "The setting" },
+  { title: "About Kevin", href: "/about", section: "Go to", hint: "Capabilities and availability" },
+  { title: "Digital card", href: "/card", section: "Go to", hint: "Contact and vCard" },
+  ...work.map((entry) => ({
+    title: entry.data.title,
+    href: `/work/${entry.id}`,
+    section: "Professional work",
+    hint: entry.data.result,
+  })),
+  ...games.map((entry) => ({
+    title: entry.data.title,
+    href: `/games/${entry.id}`,
+    section: "Games",
+    hint: `${entry.data.statusLabel} · ${entry.data.engine}`,
+  })),
+  ...universe
+    .filter((entry) => !entry.data.draft)
+    .map((entry) => ({
+      title: entry.data.title,
+      href: `/universe/${entry.id}`,
+      section: "Universe",
+      hint: entry.data.kind,
+    })),
+  { title: "Email Kevin", href: "mailto:spicymsgstudio@gmail.com", section: "Contact", hint: "spicymsgstudio@gmail.com" },
+  { title: "GitHub", href: "https://github.com/kevinyeohlaichuan", section: "Contact" },
+  { title: "LinkedIn", href: "https://www.linkedin.com/in/kevin-yeoh-lai-chuan-a7b529240/", section: "Contact" },
+  { title: "Itch.io", href: "https://kevin-d-eternal.itch.io/", section: "Contact" },
+];
 ---
 
 <!doctype html>
@@ -32,8 +74,11 @@ const ogImage = new URL(image, Astro.site);
     <link rel="icon" href="/favicon.png" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="alternate" type="application/rss+xml" title="Eternal Amaris Universe" href="/rss.xml" />
+    <meta name="theme-color" content="#080a0e" />
+    <meta name="color-scheme" content="dark" />
 
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Eternal Amaris Universe" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
@@ -42,8 +87,13 @@ const ogImage = new URL(image, Astro.site);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+
+    <ClientRouter />
+
   </head>
   <body data-quiet={quiet ? "true" : undefined}>
+    <a class="skip-link" href="#main">Skip to content</a>
     <slot />
+    <CommandPalette items={paletteItems} client:idle />
   </body>
 </html>
