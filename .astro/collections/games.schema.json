@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "released",
+        "in-development",
+        "prototype"
+      ]
+    },
+    "statusLabel": {
+      "type": "string"
+    },
+    "platforms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "engine": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "storeUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "demo": {
+      "type": "string",
+      "enum": [
+        "system",
+        "nasi",
+        "infinity"
+      ]
+    },
+    "order": {
+      "default": 99,
+      "type": "number"
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "status",
+    "statusLabel",
+    "platforms",
+    "engine",
+    "summary"
+  ]
+}
