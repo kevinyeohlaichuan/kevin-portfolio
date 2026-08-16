@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kevin D. Eternal — Game Developer</title>
+  <meta name="keywords" content="indie game developer Penang, indie game developer Malaysia, solo game developer Malaysia, Spicy MSG Studio, Kevin D. Eternal" />
+  <meta name="description" content="Kevin D. Eternal — solo indie game developer from Penang, Malaysia. Founder of Spicy MSG Studio. Games include Nasi Lemak Survivors and To Infinity and Beyond." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root { --transition: 0.35s ease; }
+
+    [data-theme="dark"] {
+      --bg:         #1a1625;
+      --bg2:        #221d30;
+      --bg3:        #2a2440;
+      --ink:        #e8e0f0;
+      --ink-mid:    #b8aed0;
+      --ink-dim:    #7a6f90;
+      --accent:     #c9a8f0;
+      --accent-dim: #8b6bb0;
+      --border:     #2e2845;
+      --card-bg:    #201b2e;
+      --toggle-bg:  #2e2845;
+    }
+
+    [data-theme="light"] {
+      --bg:         #f5f0fc;
+      --bg2:        #ede6f8;
+      --bg3:        #e3d8f5;
+      --ink:        #1e1830;
+      --ink-mid:    #4a3d6a;
+      --ink-dim:    #8a7aaa;
+      --accent:     #7b4fc4;
+      --accent-dim: #a880e0;
+      --border:     #d4c8eb;
+      --card-bg:    #ede6f8;
+      --toggle-bg:  #ddd4f0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.8;
+      padding: 0 1.5rem;
+      transition: background var(--transition), color var(--transition);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.018;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 4rem 0 6rem;
+    }
+
+    section {
+      margin-bottom: 3.5rem;
+      animation: fadeUp 0.7s ease both;
+    }
+
+    section:nth-child(1) { animation-delay: 0.05s; }
+    section:nth-child(2) { animation-delay: 0.12s; }
+    section:nth-child(3) { animation-delay: 0.19s; }
+    section:nth-child(4) { animation-delay: 0.26s; }
+    section:nth-child(5) { animation-delay: 0.33s; }
+    section:nth-child(6) { animation-delay: 0.40s; }
+
+    .toggle-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 3rem;
+    }
+
+    .theme-toggle {
+      background: var(--toggle-bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-mid);
+      letter-spacing: 0.04em;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .theme-toggle:hover { color: var(--accent); border-color: var(--accent-dim); }
+    .toggle-icon { font-size: 14px; }
+
+    header {
+      margin-bottom: 4rem;
+      animation: fadeUp 0.8s ease both;
+    }
+
+    .studio-line {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      margin-bottom: 0.8rem;
+      display: block;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.8rem, 8vw, 4.5rem);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      margin-bottom: 0.6rem;
+    }
+
+    .domain-hint {
+      font-size: 12px;
+      color: var(--ink-dim);
+      letter-spacing: 0.06em;
+      margin-bottom: 1.4rem;
+    }
+
+    .tagline {
+      font-size: 15px;
+      color: var(--ink-mid);
+      max-width: 480px;
+      line-height: 1.85;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .game {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1.6rem;
+      margin-bottom: 1rem;
+      transition: border-color var(--transition), transform 0.2s ease;
+    }
+
+    .game:hover { border-color: var(--accent-dim); transform: translateY(-2px); }
+
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .game-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+
+    .game-platform {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      white-space: nowrap;
+      padding-top: 0.15rem;
+    }
+
+    .game-desc {
+      color: var(--ink-mid);
+      font-size: 14px;
+      line-height: 1.75;
+      margin-bottom: 0.9rem;
+    }
+
+    .game-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .tag {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--ink-dim);
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+    }
+
+    .game-link {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      transition: color 0.2s;
+    }
+
+    .game-link:hover { color: var(--ink); }
+    .game-link::after { content: ' →'; }
+
+    .game-link + .game-link {
+      margin-left: 1.2rem;
+    }
+
+    .wip-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      background: var(--bg3);
+      border: 1px solid var(--accent-dim);
+      color: var(--accent);
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+      margin-left: 0.6rem;
+      vertical-align: middle;
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.45; }
+    }
+
+    .about-text {
+      color: var(--ink-mid);
+      font-size: 15px;
+      line-height: 1.9;
+      max-width: 580px;
+    }
+
+    .about-text p + p { margin-top: 1rem; }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.6rem;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.7rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-decoration: none;
+      transition: border-color var(--transition), transform 0.2s;
+    }
+
+    .contact-item:hover { border-color: var(--accent-dim); transform: translateY(-1px); }
+    .contact-icon { font-size: 15px; flex-shrink: 0; }
+    .contact-details { overflow: hidden; }
+
+    .contact-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
+      line-height: 1.2;
+    }
+
+    .contact-value {
+      display: block;
+      font-size: 13px;
+      color: var(--ink-mid);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .contact-item:hover .contact-value { color: var(--accent); }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .footer-copy { font-size: 12px; color: var(--ink-dim); letter-spacing: 0.03em; }
+    .footer-domain { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-dim); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 500px) {
+      .contact-grid { grid-template-columns: 1fr; }
+      .game-header { flex-direction: column; gap: 0.3rem; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="toggle-wrap">
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span class="toggle-icon" id="toggle-icon">☀️</span>
+        <span id="toggle-label">Light</span>
+      </button>
+    </div>
+
+    <header>
+      <span class="studio-line">Spicy MSG Studio</span>
+      <h1>Kevin D. Eternal</h1>
+      <p class="domain-hint">eternalamarisuniverse.com</p>
+      <p class="tagline">
+        Solo indie game developer based in Penang, Malaysia.
+        I make small random games from sparks of ideas — they usually end up
+        as something different from what I originally imagined.
+      </p>
+    </header>
+
+    <section>
+      <div class="section-label">Shipped Games</div>
+
+      <div class="game">
+        <div class="game-header">
+          <div class="game-title">To Infinity and Beyond</div>
+          <div class="game-platform">PC · Itch.io</div>
+        </div>
+        <p class="game-desc">
+          A precision arcade platformer. Tight controls, demanding levels,
+          and the kind of satisfaction that only comes from finally reaching
+          the top after hours of trying.
+        </p>
+        <a class="game-link" href="https://kevin-d-eternal.itch.io/to-infinity-and-beyond" target="_blank" rel="noopener">Play on Itch.io</a>
+      </div>
+
+      <div class="game">
+        <div class="game-header">
+          <div class="game-title">Nasi Lemak Survivors</div>
+          <div class="game-platform">Android</div>
+        </div>
+        <p class="game-desc">
+          A survivor roguelite stall defense with a very Malaysian soul.
+          Defend waves of hangry customers, upgrade your stall and recipes,
+          and feel the satisfying burping sound from customers.
+          Also — beware of the Karens.
+        </p>
+        <a class="game-link" href="https://play.google.com/store/apps/details?id=com.eternalamaris.nasilemak.survivors" target="_blank" rel="noopener">Download on Google Play</a>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">In Development</div>
+
+      <div class="game">
+        <div class="game-header">
+          <div class="game-title">
+            The Waiter
+            <span class="wip-badge">WIP</span>
+          </div>
+          <div class="game-platform">PC · Unreal Engine 5</div>
+        </div>
+        <p class="game-desc">
+          First-person horror set in a haunted restaurant. You work the night shift
+          serving customers who are not quite human — creatures drawn from Southeast
+          Asian folklore. Balance the tray, serve the food, don't look too long at
+          the one in the corner booth.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">Technical Work</div>
+
+      <div class="game">
+        <div class="game-header">
+          <div class="game-title">Property Presentation Mini App</div>
+          <div class="game-platform">UE5 · Blueprint</div>
+        </div>
+        <p class="game-desc">
+          An interactive real estate sales kiosk built in Unreal Engine 5 (Blueprint only).
+          Features a custom orbit camera pawn, floor visibility slider, double-click unit
+          selection with dynamic material highlights, DataTable-driven unit info panel,
+          and a dual-tower selector with Tower A / Tower B / All states.
+          Built as a technical assessment — delivered in 5 days.
+        </p>
+        <div class="game-tags">
+          <span class="tag">Unreal Engine 5</span>
+          <span class="tag">Blueprint</span>
+          <span class="tag">UMG</span>
+          <span class="tag">DataTable</span>
+          <span class="tag">Enhanced Input</span>
+          <span class="tag">Dynamic Materials</span>
+        </div>
+        <a class="game-link" href="https://drive.google.com/file/d/1Ie621CCzlkixA5vPkxCq8uZdbP6WoVFj/view?usp=sharing" target="_blank" rel="noopener">Watch Demo</a>
+      </div>
+
+      <div class="game">
+        <div class="game-header">
+          <div class="game-title">Property Viewer — Web</div>
+          <div class="game-platform">Babylon.js · Node.js · PHP</div>
+        </div>
+        <p class="game-desc">
+          The same real estate sales tool rebuilt as a web application. 
+          3D orbit camera, floor visibility slider, clickable unit selection, 
+          and a live REST API serving property data. Runs in any browser, no installation needed.
+        </p>
+        <div class="game-tags">
+          <span class="tag">Babylon.js</span>
+          <span class="tag">Node.js</span>
+          <span class="tag">Express</span>
+          <span class="tag">PHP</span>
+          <span class="tag">REST API</span>
+        </div>
+        <a class="game-link" href="https://ck-property-viewer-production.up.railway.app" target="_blank" rel="noopener">View Live Demo</a>
+      </div>
+      
+    </section>
+
+    <section>
+      <div class="section-label">About</div>
+      <div class="about-text">
+        <p>
+          I'm the person behind Spicy MSG Studio — a one-man operation in Penang
+          building games under the Eternal Amaris Universe banner. The studio
+          exists to fund the creative work.
+        </p>
+        <p>
+          Two games shipped so far. Currently deep in development on a third.
+          I work in Godot and UE5.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">Get in Touch</div>
+      <div class="contact-grid">
+
+        <a class="contact-item" href="mailto:spicymsgstudio@gmail.com">
+          <span class="contact-icon">✉️</span>
+          <div class="contact-details">
+            <span class="contact-label">Email</span>
+            <span class="contact-value">spicymsgstudio@gmail.com</span>
+          </div>
+        </a>
+
+        <a class="contact-item" href="https://kevin-d-eternal.itch.io/" target="_blank" rel="noopener">
+          <span class="contact-icon">🎮</span>
+          <div class="contact-details">
+            <span class="contact-label">Itch.io</span>
+            <span class="contact-value">kevin-d-eternal</span>
+          </div>
+        </a>
+
+        <a class="contact-item" href="https://x.com/spicymsgstudio" target="_blank" rel="noopener">
+          <span class="contact-icon">𝕏</span>
+          <div class="contact-details">
+            <span class="contact-label">X / Twitter</span>
+            <span class="contact-value">@spicymsgstudio</span>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <footer>
+      <span class="footer-copy">© 2025 Spicy MSG Studio · Penang, Malaysia</span>
+      <span class="footer-domain">Eternal Amaris Universe</span>
+    </footer>
+
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      document.getElementById('toggle-icon').textContent = isDark ? '🌙' : '☀️';
+      document.getElementById('toggle-label').textContent = isDark ? 'Dark' : 'Light';
+    }
+  </script>
+</body>
+</html>
