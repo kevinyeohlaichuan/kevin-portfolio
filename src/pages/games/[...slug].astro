@@ -1,0 +1,68 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const games = await getCollection("games");
+  return games.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  name: entry.data.title,
+  description: entry.data.summary,
+  gamePlatform: entry.data.platforms,
+  author: { "@type": "Person", name: "Kevin Yeoh" },
+  publisher: { "@type": "Organization", name: "Spicy MSG Studio" },
+  url: new URL(`/games/${entry.id}`, Astro.site).href,
+};
+---
+
+<Base title={`${entry.data.title} — Spicy MSG Studio`} description={entry.data.summary}>
+  <main>
+    <SiteHeader current="games" />
+
+    <article class="entry-detail">
+      <header class="entry-head">
+        <p class="project-eyebrow">{entry.data.statusLabel} · {entry.data.engine}</p>
+        <h1>{entry.data.title}</h1>
+        <p class="entry-tagline">{entry.data.summary}</p>
+      </header>
+
+      <div class="entry-meta">
+        <h2 class="meta-heading">Platforms</h2>
+        <div class="scope-list">
+          {entry.data.platforms.map((p) => <span>{p}</span>)}
+        </div>
+      </div>
+
+      <div class="entry-body">
+        <Content />
+      </div>
+
+      {entry.data.storeUrl && (
+        <p class="entry-cta">
+          <a class="primary-button" href={entry.data.storeUrl} target="_blank" rel="noreferrer">
+            Play it <span aria-hidden="true">↗</span>
+          </a>
+        </p>
+      )}
+
+      <p class="entry-back"><a class="text-link" href="/games">← All games</a></p>
+    </article>
+
+    <SiteFooter />
+  </main>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+</Base>

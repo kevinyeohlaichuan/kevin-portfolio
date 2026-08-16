@@ -1,0 +1,14 @@
+---
+import Base from "../layouts/Base.astro";
+import { CardClient } from "../components/CardClient";
+
+export const prerender = true;
+---
+
+<Base
+  title="Kevin Yeoh — Digital card"
+  description="Kevin Yeoh · Full-stack archviz developer at GoProp · Game developer at Spicy MSG Studio · Kuala Lumpur, Malaysia."
+  quiet={true}
+>
+  <CardClient client:load />
+</Base>

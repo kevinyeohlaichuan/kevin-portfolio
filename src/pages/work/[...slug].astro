@@ -1,0 +1,78 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import { BabylonLineScene } from "../../components/BabylonLineScene";
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const work = await getCollection("work");
+  return work.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  name: entry.data.title,
+  description: entry.data.summary,
+  creator: { "@type": "Person", name: "Kevin Yeoh" },
+  url: new URL(`/work/${entry.id}`, Astro.site).href,
+};
+---
+
+<Base title={`${entry.data.title} — Kevin Yeoh`} description={entry.data.summary}>
+  <main>
+    <SiteHeader current="work" />
+
+    <article class="entry-detail">
+      <header class="entry-head">
+        <p class="project-eyebrow">{entry.data.eyebrow}</p>
+        <h1>{entry.data.title}</h1>
+        <p class="entry-tagline">{entry.data.tagline}</p>
+        <p class="project-result">{entry.data.result}</p>
+      </header>
+
+      {entry.data.demo && (
+        <div class="entry-visual">
+          <div class="visual-topline">
+            <span>INTERACTIVE LINE PREVIEW</span>
+            <span>An original demo, not the live product</span>
+          </div>
+          <BabylonLineScene mode={entry.data.demo} client:visible />
+        </div>
+      )}
+
+      <div class="entry-meta">
+        <h2 class="meta-heading">Scope</h2>
+        <div class="scope-list">
+          {entry.data.scope.map((item) => <span>{item}</span>)}
+        </div>
+      </div>
+
+      <div class="entry-body">
+        <Content />
+      </div>
+
+      {entry.data.liveUrl && (
+        <p class="entry-cta">
+          <a class="primary-button" href={entry.data.liveUrl} target="_blank" rel="noreferrer">
+            Open the live product <span aria-hidden="true">↗</span>
+          </a>
+        </p>
+      )}
+
+      <p class="entry-back"><a class="text-link" href="/work">← All professional work</a></p>
+    </article>
+
+    <SiteFooter />
+  </main>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+</Base>

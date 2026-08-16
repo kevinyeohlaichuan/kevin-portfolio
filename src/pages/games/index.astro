@@ -1,0 +1,71 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import { GameMicroDemo } from "../../components/GameMicroDemo";
+
+export const prerender = true;
+
+const games = (await getCollection("games")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const shipped = games.filter((game) => game.data.status === "released");
+const building = games.filter((game) => game.data.status !== "released");
+---
+
+<Base
+  title="Games — Spicy MSG Studio"
+  description="Games made under Spicy MSG Studio in the Eternal Amaris Universe: shipped titles on Google Play and itch.io, plus work in development."
+>
+  <main>
+    <SiteHeader current="games" />
+
+    <section class="page-head">
+      <p class="kicker"><span></span> Games · EAU</p>
+      <h1>Worlds I&rsquo;m building<br />from the inside out.</h1>
+      <p class="page-intro">
+        Made under Spicy MSG Studio. Solo across design, code, pixel art,
+        animation and release.
+      </p>
+    </section>
+
+    <section class="section games-section">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> Playable vignettes</p>
+        <p>Short interactive demos. The engine boots when you ask it to.</p>
+      </div>
+      <GameMicroDemo client:visible />
+    </section>
+
+    <section class="section entry-list">
+      <h2 class="list-heading">Shipped</h2>
+      {shipped.map((game) => (
+        <article class="entry-row">
+          <p class="project-eyebrow">{game.data.statusLabel} · {game.data.engine}</p>
+          <h3><a href={`/games/${game.id}`}>{game.data.title}</a></h3>
+          <p class="project-summary">{game.data.summary}</p>
+          <div class="scope-list">
+            {game.data.platforms.map((p) => <span>{p}</span>)}
+          </div>
+          <a class="text-link" href={`/games/${game.id}`}>Details <span aria-hidden="true">↗</span></a>
+        </article>
+      ))}
+
+      <h2 class="list-heading">In development</h2>
+      {building.map((game) => (
+        <article class="entry-row">
+          <p class="project-eyebrow">{game.data.statusLabel} · {game.data.engine}</p>
+          <h3><a href={`/games/${game.id}`}>{game.data.title}</a></h3>
+          <p class="project-summary">{game.data.summary}</p>
+          <div class="scope-list">
+            {game.data.platforms.map((p) => <span>{p}</span>)}
+          </div>
+          <a class="text-link" href={`/games/${game.id}`}>Details <span aria-hidden="true">↗</span></a>
+        </article>
+      ))}
+    </section>
+
+    <SiteFooter />
+  </main>
+</Base>

@@ -1,0 +1,49 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import SiteHeader from "../../components/SiteHeader.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+
+export const prerender = true;
+
+const work = (await getCollection("work")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+---
+
+<Base
+  title="Professional work — Kevin Yeoh"
+  description="Architectural-visualisation and full-stack case studies: production 3D property experiences, asset pipelines and platform delivery."
+>
+  <main>
+    <SiteHeader current="work" />
+
+    <section class="page-head">
+      <p class="kicker"><span></span> Professional work</p>
+      <h1>Architectural visualisation,<br />built to be explored.</h1>
+      <p class="page-intro">
+        Production work at GoProp across immersive sales-gallery experiences,
+        browser-based project showcases and an AI-assisted property platform.
+      </p>
+    </section>
+
+    <section class="section entry-list">
+      {work.map((entry) => (
+        <article class="entry-row">
+          <p class="project-eyebrow">{entry.data.eyebrow}</p>
+          <h2><a href={`/work/${entry.id}`}>{entry.data.title}</a></h2>
+          <p class="project-summary">{entry.data.summary}</p>
+          <p class="project-result">{entry.data.result}</p>
+          <div class="scope-list">
+            {entry.data.scope.map((item) => <span>{item}</span>)}
+          </div>
+          <a class="text-link" href={`/work/${entry.id}`}>
+            Read the case study <span aria-hidden="true">↗</span>
+          </a>
+        </article>
+      ))}
+    </section>
+
+    <SiteFooter />
+  </main>
+</Base>

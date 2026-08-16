@@ -1,0 +1,118 @@
+---
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+
+export const prerender = true;
+
+const capabilities = [
+  {
+    index: "A",
+    title: "Full-stack archviz delivery",
+    copy: "React, TypeScript, JavaScript, PHP, Laravel, Node.js, Fastify, MySQL, HeidiSQL, APIs, content tools and production deployment.",
+  },
+  {
+    index: "B",
+    title: "Interactive 3D systems",
+    copy: "Babylon.js, Three.js, Blender, glTF/GLB, asset pipelines, compression, runtime profiling, interaction design and Unreal Engine 5.",
+  },
+  {
+    index: "C",
+    title: "Games and visual craft",
+    copy: "Godot 4, GDScript, gameplay systems, pixel art, animation, testing, publishing and seven years of hands-on visual practice.",
+  },
+];
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Kevin Yeoh",
+  jobTitle: "Full-stack developer",
+  worksFor: { "@type": "Organization", name: "GoProp" },
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Kuala Lumpur",
+    addressCountry: "MY",
+  },
+  email: "mailto:spicymsgstudio@gmail.com",
+  url: new URL("/about", Astro.site).href,
+  sameAs: [
+    "https://github.com/kevinyeohlaichuan",
+    "https://www.linkedin.com/in/kevin-yeoh-lai-chuan-a7b529240/",
+    "https://kevin-d-eternal.itch.io/",
+  ],
+};
+---
+
+<Base
+  title="About Kevin Yeoh — Full-stack developer, Kuala Lumpur"
+  description="Full-stack developer at GoProp working across architectural visualisation, interactive 3D systems and game development. Based in Kuala Lumpur, Malaysia."
+>
+  <main>
+    <SiteHeader current="about" />
+
+    <section class="page-head">
+      <p class="kicker"><span></span> Kuala Lumpur, Malaysia</p>
+      <h1>Kevin Yeoh</h1>
+      <p class="page-intro">
+        Full-stack developer at <strong>GoProp</strong>, building
+        architectural-visualisation products. I also run
+        <strong>Spicy MSG Studio</strong>, making games in the Eternal Amaris Universe.
+      </p>
+    </section>
+
+    <section class="section capabilities">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> Capabilities</p>
+        <h2>One delivery path.<br />Three technical lenses.</h2>
+        <p>Full-stack is the foundation. Interactive 3D and game development are the specialisations built on top.</p>
+      </div>
+      <div class="capability-list">
+        {capabilities.map((group) => (
+          <article>
+            <span>{group.index}</span>
+            <h3>{group.title}</h3>
+            <p>{group.copy}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="section availability">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> Working together</p>
+        <h2>Open to the right work.</h2>
+      </div>
+      <div class="availability-grid">
+        <article>
+          <h3>Employment</h3>
+          <p>Full-stack, architectural visualisation and interactive 3D web roles in Malaysia or remote.</p>
+        </article>
+        <article>
+          <h3>Collaboration</h3>
+          <p>Interactive 3D web, asset pipelines and real-time presentation work on a project basis.</p>
+        </article>
+        <article>
+          <h3>Press and media</h3>
+          <p>Screenshots, build access and studio details for coverage of Spicy MSG Studio games — email me.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="contact-section">
+      <p class="kicker"><span></span> Let&rsquo;s talk</p>
+      <h2>Get in touch.</h2>
+      <div class="contact-links">
+        <a href="mailto:spicymsgstudio@gmail.com">Email me <span aria-hidden="true">↗</span></a>
+        <a href="/card">Digital card <span aria-hidden="true">↗</span></a>
+        <a href="/kevin-yeoh.vcf" download>Save contact <span aria-hidden="true">↓</span></a>
+        <a href="https://www.linkedin.com/in/kevin-yeoh-lai-chuan-a7b529240/" target="_blank" rel="noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/kevinyeohlaichuan" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        <a href="https://kevin-d-eternal.itch.io/" target="_blank" rel="noreferrer">Itch.io <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+
+    <SiteFooter />
+  </main>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+</Base>

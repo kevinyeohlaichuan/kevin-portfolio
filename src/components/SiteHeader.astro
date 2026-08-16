@@ -1,0 +1,19 @@
+---
+const { current } = Astro.props;
+---
+
+<header class="site-header">
+  <a class="wordmark" href="/" aria-label="Eternal Amaris Universe, home">
+    <span class="eau-seal" aria-label="EAU"><b>E</b><b>A</b><b>U</b></span>
+    <span>Eternal Amaris Universe</span>
+  </a>
+  <nav aria-label="Primary navigation">
+    <a href="/work" aria-current={current === "work" ? "page" : undefined}>Professional</a>
+    <a href="/games" aria-current={current === "games" ? "page" : undefined}>Games</a>
+    <a href="/universe" aria-current={current === "universe" ? "page" : undefined}>Universe</a>
+    <a href="/about" aria-current={current === "about" ? "page" : undefined}>About</a>
+  </nav>
+  <a class="header-cta" href="mailto:spicymsgstudio@gmail.com">
+    Contact <span aria-hidden="true">↗</span>
+  </a>
+</header>

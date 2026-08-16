@@ -1,0 +1,37 @@
+---
+title: "HauS on 15 — Gamuda SS15"
+tagline: "A production 3D property-sales experience."
+eyebrow: "GO540 WEB · END-TO-END DELIVERY"
+summary: "A production 3D property-sales experience covering project discovery, location, facilities, units, galleries, content data and deployment."
+result: "239.8 MB source model → 34.6 MB web-ready runtime"
+scope:
+  - "Frontend and interaction"
+  - "Babylon.js runtime"
+  - "PHP and MySQL"
+  - "HeidiSQL data work"
+  - "Blender / glTF pipeline"
+  - "Build and deployment"
+liveUrl: "https://goprop.ai/demo/gamuda-ss15/"
+demo: "gamuda"
+order: 1
+featured: true
+---
+
+End-to-end delivery of a browser-based sales experience for a residential
+development: buyers explore the towers, filter by floor, inspect individual
+units and move through galleries without installing anything.
+
+## What the work involved
+
+The source model arrived at 239.8 MB — unusable over a Malaysian mobile
+connection. Rebuilding the asset pipeline through Blender and glTF, with
+mesh decimation and texture compression tuned per material, brought the
+runtime to 34.6 MB while keeping the silhouette and material reads intact.
+
+The frontend runs on Babylon.js with a React interface layer. Unit data,
+availability and content are served from MySQL through PHP, with schema
+work done directly in HeidiSQL.
+
+## Where it went
+
+Deployed to production and used as a live sales tool.
