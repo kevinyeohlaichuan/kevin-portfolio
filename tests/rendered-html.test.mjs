@@ -76,7 +76,11 @@ test("keeps the finished portfolio responsive, accessible and production-safe", 
   assert.match(cosmos, /<OrnateSword \/>/);
   assert.match(sword, /guard-flame-upper/);
   assert.match(sword, /ornate-sword-blade/);
-  assert.match(babylon, /import \* as B from "@babylonjs\/core"/);
+  // Babylon must stay statically imported (a dynamic import() inside the client
+  // chunk gets stripped by the optimiser) but must never be a namespace import —
+  // that defeats tree-shaking and costs ~1 MB gzip. Deep paths only.
+  assert.match(babylon, /import \{ Engine \} from "@babylonjs\/core\/Engines\/engine\.js"/);
+  assert.doesNotMatch(babylon, /import \* as B from "@babylonjs\/core"/);
   assert.match(gameRuntime, /import Phaser from "phaser"/);
   assert.match(gameRuntime, /default: "arcade"/);
   assert.match(gameRuntime, /physics\.add\.overlap/);

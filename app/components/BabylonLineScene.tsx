@@ -1,6 +1,20 @@
 "use client";
 
-import * as B from "@babylonjs/core";
+// Deep imports only. A namespace import of "@babylonjs/core" defeats
+// tree-shaking and pulls the whole engine into the bundle (5.6 MB raw).
+// These paths are the side-effect wrappers, not the ".pure" modules —
+// the wrapper is what registers cameras, materials and builders at runtime.
+import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera.js";
+import { Engine } from "@babylonjs/core/Engines/engine.js";
+import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents.js";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
+import { Color3, Color4 } from "@babylonjs/core/Maths/math.color.js";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.js";
+import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.js";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
+import { Scene } from "@babylonjs/core/scene.js";
 import * as builder from "@babylonjs/core/Meshes/Builders/greasedLineBuilder.js";
 import * as materials from "@babylonjs/core/Materials/GreasedLine/greasedLineMaterialInterfaces.js";
 import { useEffect, useRef, useState } from "react";
@@ -29,22 +43,22 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     if (!canvas) return;
 
     let statusTimer: number | undefined;
-    const engine = new B.Engine(canvas, true, {
+    const engine = new Engine(canvas, true, {
       antialias: true,
       preserveDrawingBuffer: false,
       stencil: false,
       powerPreference: "high-performance",
     });
-      const scene = new B.Scene(engine);
-      scene.clearColor = new B.Color4(0, 0, 0, 0);
+      const scene = new Scene(engine);
+      scene.clearColor = new Color4(0, 0, 0, 0);
       scene.skipPointerMovePicking = true;
 
-      const camera = new B.ArcRotateCamera(
+      const camera = new ArcRotateCamera(
         `camera-${mode}`,
         mode === "platform" ? -Math.PI / 2.35 : -Math.PI / 2.55,
         1.05,
         16,
-        new B.Vector3(0, 1.7, 0),
+        new Vector3(0, 1.7, 0),
         scene,
       );
       camera.lowerRadiusLimit = 10;
@@ -53,16 +67,16 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       camera.panningSensibility = 0;
       camera.attachControl(canvas, true);
 
-      const violet = B.Color3.FromHexString("#b69cff");
-      const jade = B.Color3.FromHexString("#8ee3c0");
-      const peach = B.Color3.FromHexString("#ffb893");
-      const ink = B.Color3.FromHexString("#f5f0ff");
-      const root = new B.TransformNode(`root-${mode}`, scene);
+      const violet = Color3.FromHexString("#b69cff");
+      const jade = Color3.FromHexString("#8ee3c0");
+      const peach = Color3.FromHexString("#ffb893");
+      const ink = Color3.FromHexString("#f5f0ff");
+      const root = new TransformNode(`root-${mode}`, scene);
       const lineMaterials: LineMaterial[] = [];
-      const selectable: InstanceType<typeof B.Mesh>[] = [];
+      const selectable: Mesh[] = [];
 
-      const makeWireMaterial = (name: string, color: InstanceType<typeof B.Color3>, alpha = 0.62) => {
-        const material = new B.StandardMaterial(name, scene);
+      const makeWireMaterial = (name: string, color: Color3, alpha = 0.62) => {
+        const material = new StandardMaterial(name, scene);
         material.wireframe = true;
         material.disableLighting = true;
         material.emissiveColor = color;
@@ -76,8 +90,8 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
 
       const makeRoute = (
         name: string,
-        points: InstanceType<typeof B.Vector3>[],
-        color: InstanceType<typeof B.Color3>,
+        points: Vector3[],
+        color: Color3,
         dashed = true,
         width = 0.07,
       ) => {
@@ -107,11 +121,11 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         floors: number,
         width: number,
         depth: number,
-        material: InstanceType<typeof B.StandardMaterial>,
+        material: StandardMaterial,
         label: string,
       ) => {
         for (let floor = 0; floor < floors; floor += 1) {
-          const mesh = B.MeshBuilder.CreateBox(
+          const mesh = CreateBox(
             `${label}-${floor + 1}`,
             { width, depth, height: 0.42 },
             scene,
@@ -128,14 +142,14 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       for (let line = -gridSize; line <= gridSize; line += 1) {
         makeRoute(
           `grid-x-${line}`,
-          [new B.Vector3(-gridSize, 0, line), new B.Vector3(gridSize, 0, line)],
+          [new Vector3(-gridSize, 0, line), new Vector3(gridSize, 0, line)],
           ink,
           false,
           0.012,
         );
         makeRoute(
           `grid-z-${line}`,
-          [new B.Vector3(line, 0, -gridSize), new B.Vector3(line, 0, gridSize)],
+          [new Vector3(line, 0, -gridSize), new Vector3(line, 0, gridSize)],
           ink,
           false,
           0.012,
@@ -149,11 +163,11 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         makeRoute(
           "gamuda-transit",
           [
-            new B.Vector3(-7, 0.08, 4),
-            new B.Vector3(-4, 0.08, 1.5),
-            new B.Vector3(-1, 0.08, 3.2),
-            new B.Vector3(2.2, 0.08, 1.2),
-            new B.Vector3(7, 0.08, 3.5),
+            new Vector3(-7, 0.08, 4),
+            new Vector3(-4, 0.08, 1.5),
+            new Vector3(-1, 0.08, 3.2),
+            new Vector3(2.2, 0.08, 1.2),
+            new Vector3(7, 0.08, 3.5),
           ],
           jade,
           true,
@@ -177,12 +191,12 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         makeRoute(
           "platform-route-a",
           [
-            new B.Vector3(-7, 0.1, -4),
-            new B.Vector3(-4.3, 0.1, -2.2),
-            new B.Vector3(-2.2, 0.1, 1.5),
-            new B.Vector3(0, 0.1, -1.5),
-            new B.Vector3(4.1, 0.1, -2),
-            new B.Vector3(7, 0.1, 0.2),
+            new Vector3(-7, 0.1, -4),
+            new Vector3(-4.3, 0.1, -2.2),
+            new Vector3(-2.2, 0.1, 1.5),
+            new Vector3(0, 0.1, -1.5),
+            new Vector3(4.1, 0.1, -2),
+            new Vector3(7, 0.1, 0.2),
           ],
           jade,
           true,
@@ -191,27 +205,27 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         makeRoute(
           "platform-route-b",
           [
-            new B.Vector3(-6, 0.12, 4.5),
-            new B.Vector3(-2.2, 0.12, 1.5),
-            new B.Vector3(2.4, 0.12, 1.2),
-            new B.Vector3(4.5, 0.12, 3.2),
-            new B.Vector3(7, 0.12, 4),
+            new Vector3(-6, 0.12, 4.5),
+            new Vector3(-2.2, 0.12, 1.5),
+            new Vector3(2.4, 0.12, 1.2),
+            new Vector3(4.5, 0.12, 3.2),
+            new Vector3(7, 0.12, 4),
           ],
           violet,
           true,
           0.075,
         );
 
-        const beaconMaterial = new B.StandardMaterial("beacon-material", scene);
+        const beaconMaterial = new StandardMaterial("beacon-material", scene);
         beaconMaterial.wireframe = true;
         beaconMaterial.disableLighting = true;
         beaconMaterial.emissiveColor = peach;
         const beacons = [
-          new B.Vector3(-2.2, 4.3, 1.5),
-          new B.Vector3(0, 6.3, -1.5),
-          new B.Vector3(4.1, 5.2, -2),
+          new Vector3(-2.2, 4.3, 1.5),
+          new Vector3(0, 6.3, -1.5),
+          new Vector3(4.1, 5.2, -2),
         ].map((position, index) => {
-          const beacon = B.MeshBuilder.CreateSphere(`recommendation-${index}`, { diameter: 0.32 }, scene);
+          const beacon = CreateSphere(`recommendation-${index}`, { diameter: 0.32 }, scene);
           beacon.position = position;
           beacon.material = beaconMaterial;
           beacon.parent = root;
@@ -230,10 +244,10 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       }
 
       if (mode === "gamuda") {
-        let selected: InstanceType<typeof B.Mesh> | null = null;
+        let selected: Mesh | null = null;
         scene.onPointerObservable.add((pointerInfo) => {
-          if (pointerInfo.type !== B.PointerEventTypes.POINTERPICK) return;
-          const mesh = pointerInfo.pickInfo?.pickedMesh as InstanceType<typeof B.Mesh> | null;
+          if (pointerInfo.type !== PointerEventTypes.POINTERPICK) return;
+          const mesh = pointerInfo.pickInfo?.pickedMesh as Mesh | null;
           if (!mesh || !selectable.includes(mesh)) return;
           if (selected?.material) selected.material = selected.name.includes("Tower B") ? violetWire : selected.name.includes("Tower C") ? jadeWire : quietWire;
           selected = mesh;
