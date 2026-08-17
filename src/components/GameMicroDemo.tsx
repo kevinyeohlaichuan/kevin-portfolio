@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { ArcadeScore } from "./GameCanvasRuntime";
 import { SystemGameDemo } from "./SystemGameDemo";
 
@@ -9,12 +9,12 @@ const GameCanvas = lazy(() => import("./GameCanvasRuntime").then((module) => ({ 
 
 const gameCopy: Record<GameMode, { index: string; title: string; status: string; instruction: string; description: string; href?: string }> = {
   system: {
-    index: "01", title: "I Got a System", status: "Current WIP · Godot", instruction: "Teach the host · watch the next run",
-    description: "An automatic turn-based cultivation game. You shape an autonomous host through post-run commands rather than controlling every move.",
+    index: "01", title: "I Got a System", status: "Current WIP · Godot", instruction: "搜 Search · 打 Hit · 跑 Run",
+    description: "An automatic turn-based extraction run where speed controls action order. The host searches for keys and loot, fights or flees from monsters that chase on sight, then unlocks the floor exit.",
   },
   nasi: {
     index: "02", title: "Nasi Lemak Survivors", status: "Released · Google Play", instruction: "Automatic stall defence · unlimited levels",
-    description: "A nasi lemak aunty satisfies incoming customers by tossing three recipes: single-target biasa, area berapi and piercing rendang.",
+    description: "A nasi lemak aunty starts with basic nasi lemak biasa, then unlocks berapi and rendang as she levels — Vampire Survivors style stall defence.",
     href: "https://play.google.com/store/apps/details?id=com.eternalamaris.nasilemak.survivors",
   },
   infinity: {
@@ -29,6 +29,7 @@ function RuntimeFallback({ mode }: { mode: "nasi" | "infinity" }) {
 }
 
 export function GameMicroDemo() {
+  const stageRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<GameMode>("system");
   const [started, setStarted] = useState(false);
   const [runScore, setRunScore] = useState<ArcadeScore | null>(null);
@@ -43,10 +44,22 @@ export function GameMicroDemo() {
     } catch { /* private browsing */ }
   }, []);
 
+  const revealStage = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        stageRef.current?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    });
+  };
+
   const selectMode = (next: GameMode) => {
     setMode(next);
     setStarted(false);
     setRunScore(null);
+    revealStage();
   };
 
   const saveScore = () => {
@@ -61,8 +74,8 @@ export function GameMicroDemo() {
 
   return (
     <div className="game-showcase">
-      <div className="game-stage-shell">
-        <div className="game-stage-topline"><span>Playable portfolio demo</span><span>{active.instruction}</span></div>
+      <div className="game-stage-shell" ref={stageRef}>
+        <div className="game-stage-topline"><span>{active.title}</span><span>{active.instruction}</span></div>
         {mode === "system" ? <SystemGameDemo /> : started ? (
           <Suspense fallback={<RuntimeFallback mode={mode} />}>
             <GameCanvas mode={mode} title={active.title} onRunEnd={setRunScore} />
@@ -70,26 +83,27 @@ export function GameMicroDemo() {
         ) : (
           <div className="game-start-shell">
             <RuntimeFallback mode={mode} />
-            <button className="game-start-button" type="button" onClick={() => setStarted(true)}><span>Start this run</span><small>Loads the mini-game only when asked</small></button>
+            <button className="game-start-button" type="button" onClick={() => { setStarted(true); revealStage(); }}><span>Start this run</span><small>Loads the mini-game only when asked</small></button>
           </div>
         )}
 
-        {started && mode === "nasi" ? (
-          <aside className="arcade-legend nasi-legend" aria-label="Nasi lemak weapons">
-            <article><span>01</span><div><strong>Nasi lemak biasa</strong><small>Single customer damage</small></div></article>
-            <article><span>02</span><div><strong>Nasi lemak berapi</strong><small>Area satisfaction damage</small></div></article>
-            <article><span>03</span><div><strong>Nasi lemak rendang</strong><small>Pierces several customers</small></div></article>
-            <p>Actives and matching passives level without a cap. At higher levels, aligned pairs evolve.</p>
-          </aside>
-        ) : null}
-        {started && mode === "infinity" ? (
-          <aside className="arcade-legend infinity-legend" aria-label="Tower controls and hazards">
-            <article><span>← →</span><div><strong>Move</strong><small>A / D or tap the left and right zones</small></div></article>
-            <article><span>↑</span><div><strong>Jump</strong><small>Space or tap the centre zone</small></div></article>
-            <p>Lavender shots home slowly. Jade shots travel straight. Peach spikes and every projectile only knock you back.</p>
-          </aside>
-        ) : null}
       </div>
+
+      {started && mode === "nasi" ? (
+        <aside className="arcade-legend nasi-legend" aria-label="Nasi lemak weapons">
+          <article><span>01</span><div><strong>Nasi lemak biasa</strong><small>Starts unlocked · single customer</small></div></article>
+          <article><span>02</span><div><strong>Nasi lemak berapi</strong><small>Unlocks on level up · area damage</small></div></article>
+          <article><span>03</span><div><strong>Nasi lemak rendang</strong><small>Unlocks later · piercing</small></div></article>
+          <p>Start with biasa. Level up to unlock berapi, then rendang. Weapons and passives keep upgrading with no cap.</p>
+        </aside>
+      ) : null}
+      {started && mode === "infinity" ? (
+        <aside className="arcade-legend infinity-legend" aria-label="Tower controls and hazards">
+          <article><span>← →</span><div><strong>Move</strong><small>A / D or tap the left and right zones</small></div></article>
+          <article><span>↑</span><div><strong>Jump</strong><small>Space or tap the centre zone</small></div></article>
+          <p>Lavender shots home slowly. Jade shots travel straight. Peach spikes and every projectile only knock you back.</p>
+        </aside>
+      ) : null}
 
       {runScore ? (
         <section className="arcade-score-entry">

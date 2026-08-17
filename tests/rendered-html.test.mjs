@@ -82,6 +82,7 @@ test("Babylon stays statically imported but never as a namespace", async () => {
 
   // Deep paths must target the side-effect wrappers, not ".pure" modules,
   // or cameras/materials/builders never register at runtime.
+  assert.match(babylon, /import "@babylonjs\/core\/Culling\/ray\.js"/);
   assert.doesNotMatch(babylon, /@babylonjs\/core\/[^"]*\.pure/);
 });
 
@@ -89,10 +90,15 @@ test("Phaser only loads on an explicit click", async () => {
   const demo = await source("src/components/GameMicroDemo.tsx");
   assert.match(demo, /lazy\(/);
   assert.match(demo, /game-start-button/);
+  assert.match(demo, /stageRef/);
+  assert.match(demo, /scrollIntoView/);
   assert.doesNotMatch(demo, /next\/dynamic/);
 
   const runtime = await source("src/components/GameCanvasRuntime.tsx");
   assert.match(runtime, /import Phaser from "phaser"/);
+
+  const config = await source("astro.config.mjs");
+  assert.match(config, /exclude: \["phaser"\]/);
 });
 
 test("no company product is embedded in an iframe", async () => {
@@ -214,15 +220,80 @@ test("property discovery waits for the conversation before highlighting", async 
   assert.doesNotMatch(scene, /Run AI discovery preview/i);
 });
 
-test("the cultivation demo saves progression and learns from each run", async () => {
+test("the archviz dock is collapsible and units are pickable by type", async () => {
+  const scene = await source("src/components/BabylonLineScene.tsx");
+  assert.match(scene, /Collapse panel/);
+  assert.match(scene, /Expand panel/);
+  assert.match(scene, /panelOpen \? "›" : "‹"/);
+  assert.match(scene, /panelOpen \? "⌃" : "⌄"/);
+  assert.doesNotMatch(scene, />Hide panel</);
+  assert.doesNotMatch(scene, /Explore project/);
+  assert.match(scene, /Click a unit in the viewport/);
+  assert.match(scene, /Tower 1/);
+  assert.match(scene, /Tower 2/);
+  assert.match(scene, /Tower 3/);
+  assert.doesNotMatch(scene, /Tower A|Tower B|Tower C/);
+  assert.match(scene, /Type A/);
+  assert.match(scene, /Type B/);
+  assert.match(scene, /Type C/);
+  assert.match(scene, /colorless/);
+  assert.match(scene, /view\.unitType === meta\.type/);
+  assert.match(scene, /view\.selectedId === meta\.id/);
+  assert.match(scene, /view\.unitType = null/);
+  assert.match(scene, /view\.hiddenTowers\.includes/);
+  assert.match(scene, /Hide \$\{tower\.id\}/);
+  assert.match(scene, /Show \$\{tower\.id\}/);
+  assert.doesNotMatch(scene, /typeWires/);
+  assert.match(scene, /scene\.pick\(/);
+  assert.match(scene, /pointerup/);
+  assert.match(scene, /width: tower\.width, depth: tower\.depth, height: 0\.42/);
+  assert.doesNotMatch(scene, /const cell = tower\.width/);
+
+  const css = await source("src/styles/global.css");
+  assert.match(css, /width: min\(270px, 25%\)/);
+  assert.match(css, /orientation: portrait/);
+  assert.match(css, /\.property-chat \{[^}]*overflow-y: auto/);
+});
+
+test("the system demo preserves autonomous progression around search, hit and run", async () => {
   const game = await source("src/components/SystemGameDemo.tsx");
   assert.match(game, /window\.localStorage/);
+  assert.match(game, /window\.setInterval/);
+  assert.match(game, /system-left-panel/);
+  assert.match(game, /Stats/);
+  assert.match(game, /Equipment/);
+  assert.match(game, /Inventory/);
+  assert.match(game, /Skills/);
   assert.match(game, /Lifespan/);
   assert.match(game, /Obedience/);
-  assert.match(game, /Too greedy/);
-  assert.match(game, /Too cautious/);
-  assert.match(game, /Fight more/);
-  assert.match(game, /Upgrade system/);
+  assert.match(game, /LEARNED HOST BEHAVIOUR/);
+  assert.match(game, /POST-RUN REVIEW/);
+  assert.match(game, /Automatic/);
+  assert.match(game, /搜 Search/);
+  assert.match(game, /打 Hit/);
+  assert.match(game, /跑 Run/);
+  assert.doesNotMatch(game, /割/);
+  assert.match(game, /hasSight/);
+  assert.match(game, /100 \/ actingMonster\.speed/);
+  assert.match(game, /bronze/);
+  assert.match(game, /jade/);
+  assert.match(game, /sigil/);
+  assert.match(game, /type: "chest"/);
+  assert.match(game, /type: "exit"/);
+  assert.match(game, /timeLimit/);
+  assert.match(game, /TIME ALERT/);
+  assert.match(game, /TIME EXPIRED/);
+  assert.match(game, /outcome = "timeout"/);
+});
+
+test("the games showcase stays open-ended and separates mobile surfaces", async () => {
+  const home = await source("src/pages/index.astro");
+  assert.match(home, /Playable worlds/);
+  assert.doesNotMatch(home, /Three games/);
+
+  const css = await source("src/styles/global.css");
+  assert.match(css, /\.game-showcase \{ display: flex; flex-direction: column; gap: 12px/);
+  assert.match(css, /\.game-stage-shell:has\(\.system-game\) \{ min-height: 0; height: auto/);
 });
 
 test("pixel art is authored, not filtered", async () => {

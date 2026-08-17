@@ -21,6 +21,11 @@ export default defineConfig({
   integrations: [react(), mdx(), sitemap()],
   vite: {
     plugins: [tailwindcss()],
+    // Phaser already owns its browser bundle. Vite's dev pre-bundler can
+    // invalidate that cached chunk while this click-loaded island is idle.
+    optimizeDeps: {
+      exclude: ["phaser"],
+    },
   },
   build: {
     inlineStylesheets: "auto",

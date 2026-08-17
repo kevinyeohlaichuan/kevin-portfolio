@@ -82,9 +82,9 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
       pointerDirection: 0,
       pointerUntil: 0,
       invulnerableUntil: 0,
-      nextShotAt: { biasa: 0, berapi: 900, rendang: 1500 },
-      weaponLevels: { biasa: 1, berapi: 1, rendang: 1 },
-      passives: { sambal: 1, leaf: 1, rice: 1 },
+      nextShotAt: { biasa: 480, berapi: Number.POSITIVE_INFINITY, rendang: Number.POSITIVE_INFINITY },
+      weaponLevels: { biasa: 1, berapi: 0, rendang: 0 },
+      passives: { sambal: 0, leaf: 0, rice: 1 },
       evolved: new Set<"biasa" | "berapi" | "rendang">(),
       stallHp: 100,
       served: 0,
@@ -108,7 +108,7 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
       customer.angle = Math.atan2(point[1] - height / 2, point[0] - width / 2);
     };
 
-    const nearestCustomer = () => customers.filter((customer) => !customer.leaving).sort((a, b) => Phaser.Math.Distance.Between(a.body.x, a.body.y, width / 2, height / 2) - Phaser.Math.Distance.Between(b.body.x, b.body.y, width / 2, height / 2))[0];
+    const nearestCustomer = () => customers.filter((customer) => !customer.leaving && customer.body.x > 0 && customer.body.y > 0).sort((a, b) => Phaser.Math.Distance.Between(a.body.x, a.body.y, width / 2, height / 2) - Phaser.Math.Distance.Between(b.body.x, b.body.y, width / 2, height / 2))[0];
     const fireFood = (kind: FoodProjectile["kind"]) => {
       const target = nearestCustomer();
       if (!target) return;
@@ -125,18 +125,30 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
       customer.leaving = true;
       state.served += 1;
       state.exp += 1;
-      if (state.served % 8 === 0) state.wave += 1;
-      const needed = 4 + state.level * 2;
+      if (state.served % 10 === 0) state.wave += 1;
+      const needed = 8 + state.level * 3;
       if (state.exp >= needed) {
         state.exp -= needed;
         state.level += 1;
-        const order = ["biasa", "berapi", "rendang"] as const;
-        const upgraded = order[(state.level - 2) % order.length];
-        state.weaponLevels[upgraded] += 1;
-        const passive = upgraded === "berapi" ? "sambal" : upgraded === "rendang" ? "leaf" : "rice";
-        state.passives[passive] += 1;
-        if (state.weaponLevels[upgraded] >= 5 && state.passives[passive] >= 5) state.evolved.add(upgraded);
-        statusText?.setText(state.evolved.has(upgraded) ? `EVOLVED · ${upgraded.toUpperCase()} + ${passive.toUpperCase()}` : `LEVEL ${state.level} · ${upgraded.toUpperCase()} + PASSIVE UPGRADED`);
+        if (state.weaponLevels.berapi === 0) {
+          state.weaponLevels.berapi = 1;
+          state.passives.sambal = Math.max(1, state.passives.sambal);
+          state.nextShotAt.berapi = state.time + 320;
+          statusText?.setText(`LEVEL ${state.level} · NASI LEMAK BERAPI UNLOCKED`);
+        } else if (state.weaponLevels.rendang === 0) {
+          state.weaponLevels.rendang = 1;
+          state.passives.leaf = Math.max(1, state.passives.leaf);
+          state.nextShotAt.rendang = state.time + 420;
+          statusText?.setText(`LEVEL ${state.level} · NASI LEMAK RENDANG UNLOCKED`);
+        } else {
+          const order = ["biasa", "berapi", "rendang"] as const;
+          const upgraded = order[(state.level - 1) % order.length];
+          state.weaponLevels[upgraded] += 1;
+          const passive = upgraded === "berapi" ? "sambal" : upgraded === "rendang" ? "leaf" : "rice";
+          state.passives[passive] += 1;
+          if (state.weaponLevels[upgraded] >= 5 && state.passives[passive] >= 5) state.evolved.add(upgraded);
+          statusText?.setText(state.evolved.has(upgraded) ? `EVOLVED · ${upgraded.toUpperCase()} + ${passive.toUpperCase()}` : `LEVEL ${state.level} · ${upgraded.toUpperCase()} UPGRADED`);
+        }
       }
     };
 
@@ -162,7 +174,7 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
     const scene = {
       create(this: PhaserTypes.Scene) {
         graphics = this.add.graphics();
-        statusText = this.add.text(20, height - 24, mode === "nasi" ? "AUNTY IS OPEN · RECIPES FIRE AUTOMATICALLY" : "60 SECONDS · CLIMB · HITS KNOCK YOU BACK", { color: "#aaa4b7", fontFamily: "monospace", fontSize: "10px", letterSpacing: 1.2 }).setDepth(8);
+        statusText = this.add.text(20, height - 24, mode === "nasi" ? "BASIC NASI LEMAK · LEVEL UP TO UNLOCK MORE" : "60 SECONDS · CLIMB · HITS KNOCK YOU BACK", { color: "#aaa4b7", fontFamily: "monospace", fontSize: "10px", letterSpacing: 1.2 }).setDepth(8);
         hudText = this.add.text(20, 20, "", { color: "#f5f0ff", fontFamily: "monospace", fontSize: "11px", letterSpacing: 1.1 }).setDepth(8);
         if (mode === "nasi") {
           player = this.physics.add.image(width / 2, height / 2, "__WHITE").setVisible(false);
@@ -171,6 +183,10 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
             const customer: Customer = { body, satisfaction: 20, maxSatisfaction: 20, leaving: false, angle: 0 };
             resetCustomer(customer, index);
             return customer;
+          });
+          customers.slice(3).forEach((customer) => {
+            customer.body.setPosition(-80, -80);
+            (customer.body.body as PhaserTypes.Physics.Arcade.Body).reset(-80, -80);
           });
         } else {
           this.physics.world.setBounds(0, 0, width, height - 30);
@@ -205,11 +221,27 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
 
         if (mode === "nasi") {
           if (!state.over) {
-            if (state.time >= state.nextShotAt.biasa) { fireFood("biasa"); state.nextShotAt.biasa = state.time + Math.max(210, 620 - state.weaponLevels.biasa * 28); }
-            if (state.time >= state.nextShotAt.berapi) { fireFood("berapi"); state.nextShotAt.berapi = state.time + Math.max(700, 2450 - state.weaponLevels.berapi * 70); }
-            if (state.time >= state.nextShotAt.rendang) { fireFood("rendang"); state.nextShotAt.rendang = state.time + Math.max(560, 1900 - state.weaponLevels.rendang * 58); }
+            (["biasa", "berapi", "rendang"] as const).forEach((kind) => {
+              if (state.weaponLevels[kind] < 1 || state.time < state.nextShotAt[kind]) return;
+              fireFood(kind);
+              const cooldown = kind === "biasa"
+                ? Math.max(340, 960 - state.weaponLevels.biasa * 40)
+                : kind === "berapi"
+                  ? Math.max(860, 2700 - state.weaponLevels.berapi * 80)
+                  : Math.max(680, 2200 - state.weaponLevels.rendang * 64);
+              state.nextShotAt[kind] = state.time + cooldown;
+            });
           }
+          const liveCount = Math.min(customers.length, 2 + state.wave);
           customers.forEach((customer, index) => {
+            if (index >= liveCount) {
+              customer.body.setVelocity(0, 0);
+              customer.body.setPosition(-80, -80);
+              (customer.body.body as PhaserTypes.Physics.Arcade.Body).reset(-80, -80);
+              customer.leaving = false;
+              return;
+            }
+            if (customer.body.x < 0) resetCustomer(customer, index);
             if (customer.leaving) {
               customer.body.setVelocity(Math.cos(customer.angle) * 170, Math.sin(customer.angle) * 170);
               if (customer.body.x < 5 || customer.body.x > width - 5 || customer.body.y < 5 || customer.body.y > height - 5) resetCustomer(customer, index);
@@ -231,10 +263,10 @@ export function GameCanvasRuntime({ mode, title, onRunEnd }: GameCanvasRuntimePr
             shot.y += shot.vy * delta / 1000;
             shot.life -= delta;
             customers.forEach((customer) => {
-              if (customer.leaving || shot.hits.has(customer) || Phaser.Math.Distance.Between(shot.x, shot.y, customer.body.x, customer.body.y) >= 15) return;
+              if (customer.leaving || customer.body.x < 0 || shot.hits.has(customer) || Phaser.Math.Distance.Between(shot.x, shot.y, customer.body.x, customer.body.y) >= 15) return;
               shot.hits.add(customer);
               satisfy(customer, shot.damage);
-              if (shot.kind === "berapi") customers.forEach((nearby) => { if (!nearby.leaving && Phaser.Math.Distance.Between(customer.body.x, customer.body.y, nearby.body.x, nearby.body.y) < 62 + state.passives.sambal * 3) satisfy(nearby, shot.damage * 0.72); });
+              if (shot.kind === "berapi") customers.forEach((nearby) => { if (!nearby.leaving && nearby.body.x > 0 && Phaser.Math.Distance.Between(customer.body.x, customer.body.y, nearby.body.x, nearby.body.y) < 62 + state.passives.sambal * 3) satisfy(nearby, shot.damage * 0.72); });
               if (shot.kind === "biasa") shot.life = 0;
               if (shot.kind === "rendang" && shot.hits.size >= 3 + Math.floor(state.weaponLevels.rendang / 4)) shot.life = 0;
             });

@@ -1,32 +1,51 @@
 // Deep imports keep the Babylon preview small enough for mobile visitors.
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera.js";
+import "@babylonjs/core/Culling/ray.js";
 import { Engine } from "@babylonjs/core/Engines/engine.js";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents.js";
+import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight.js";
+import { GreasedLineMeshMaterialType } from "@babylonjs/core/Materials/GreasedLine/greasedLineMaterialInterfaces.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.js";
+import { CreateGreasedLine } from "@babylonjs/core/Meshes/Builders/greasedLineBuilder.js";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { Scene } from "@babylonjs/core/scene.js";
-import * as builder from "@babylonjs/core/Meshes/Builders/greasedLineBuilder.js";
-import * as materials from "@babylonjs/core/Materials/GreasedLine/greasedLineMaterialInterfaces.js";
 import { useEffect, useRef, useState } from "react";
 
 type SceneMode = "gamuda" | "platform";
-type ExplorerTab = "project" | "towers" | "facilities";
+type TowerFilter = "Tower 1" | "Tower 2" | "Tower 3";
+type UnitType = (typeof UNIT_LAYOUTS)[number]["type"];
 
 interface BabylonLineSceneProps { mode: SceneMode; }
 interface LineMaterial { dashOffset: number; }
+interface UnitPick {
+  id: string;
+  tower: string;
+  floor: number;
+  stack: string;
+  type: UnitType;
+  rooms: string;
+  size: string;
+}
+interface ProjectPick {
+  id: string;
+  name: string;
+  note: string;
+}
 interface SceneControls {
-  selectFloor: (tower: string, floor: number) => void;
+  setFilters: (hiddenTowers: TowerFilter[], unitType: UnitType | null, selectedId: string) => void;
+  setMaxFloor: (floor: number) => void;
   showMatches: (projects: string[]) => void;
+  resetCamera: () => void;
 }
 
 const TOWERS = [
-  { id: "Tower A", floors: 13, start: 8, note: "Quieter edge · morning light" },
-  { id: "Tower B", floors: 18, start: 8, note: "Central facilities · city view" },
-  { id: "Tower C", floors: 15, start: 8, note: "Transit side · evening light" },
+  { id: "Tower 1", floors: 13, start: 8, note: "Quieter edge · morning light" },
+  { id: "Tower 2", floors: 18, start: 8, note: "Central facilities · city view" },
+  { id: "Tower 3", floors: 15, start: 8, note: "Transit side · evening light" },
 ] as const;
 
 const UNIT_LAYOUTS = [
@@ -34,6 +53,12 @@ const UNIT_LAYOUTS = [
   { stack: "02", type: "Type B", rooms: "3 bed · 2 bath", size: "958 sq ft" },
   { stack: "03", type: "Type C", rooms: "3+1 bed · 2 bath", size: "1,152 sq ft" },
 ] as const;
+
+const TYPE_COLORS: Record<UnitType, string> = {
+  "Type A": "#b69cff",
+  "Type B": "#8ee3c0",
+  "Type C": "#ffb893",
+};
 
 const PLATFORM_PROJECTS = [
   { id: "Project 1", name: "Lavender Court", note: "Calm neighbourhood · clinics nearby" },
@@ -85,129 +110,278 @@ type ChatResult = { answer: string; matches: readonly string[] };
 
 export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const controlsRef = useRef<SceneControls>({ selectFloor: () => {}, showMatches: () => {} });
-  const [status, setStatus] = useState(mode === "gamuda" ? "Drag to orbit · tap a floor" : "Drag to explore · ask for a match");
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [panelTab, setPanelTab] = useState<ExplorerTab>("project");
-  const [selectedTower, setSelectedTower] = useState("Tower B");
-  const [selectedFloor, setSelectedFloor] = useState(12);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<SceneControls>({
+    setFilters: () => {}, setMaxFloor: () => {}, showMatches: () => {}, resetCamera: () => {},
+  });
+  const [status, setStatus] = useState(mode === "gamuda" ? "Drag to orbit · tap a unit" : "Drag to explore · tap a development");
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [hiddenTowers, setHiddenTowers] = useState<TowerFilter[]>([]);
+  const [selectedUnitType, setSelectedUnitType] = useState<UnitType | null>(null);
+  const [maxFloor, setMaxFloor] = useState(25);
+  const [selectedUnit, setSelectedUnit] = useState<UnitPick | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectPick | null>(null);
   const [chatTopic, setChatTopic] = useState<ChatTopic | null>(null);
   const [chatResult, setChatResult] = useState<ChatResult | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false, stencil: false, powerPreference: "high-performance" });
+    const viewport = viewportRef.current;
+    if (!canvas || !viewport) return;
+    let engine: Engine;
+    try {
+      engine = new Engine(canvas, true, { antialias: true, adaptToDeviceRatio: true, preserveDrawingBuffer: false, stencil: false, powerPreference: "high-performance" });
+    } catch {
+      setStatus("WebGL unavailable · static preview active");
+      return;
+    }
     const scene = new Scene(engine);
     scene.clearColor = new Color4(0, 0, 0, 0);
     scene.skipPointerMovePicking = true;
-    const camera = new ArcRotateCamera(`camera-${mode}`, mode === "platform" ? -Math.PI / 2.35 : -Math.PI / 2.55, 1.05, 16, new Vector3(0, 1.7, 0), scene);
+    const light = new HemisphericLight(`fill-${mode}`, new Vector3(0.2, 1, 0.35), scene);
+    light.intensity = 0.85;
+    const startAlpha = mode === "platform" ? -Math.PI / 2.35 : -Math.PI / 2.55;
+    const startBeta = 1.05;
+    const startRadius = 16;
+    const startTarget = new Vector3(0, 1.7, 0);
+    const camera = new ArcRotateCamera(`camera-${mode}`, startAlpha, startBeta, startRadius, startTarget.clone(), scene);
     camera.lowerRadiusLimit = 10;
     camera.upperRadiusLimit = 23;
     camera.wheelDeltaPercentage = 0.02;
     camera.panningSensibility = 0;
-    camera.attachControl(canvas, true);
+    camera.attachControl(canvas, false);
 
     const violet = Color3.FromHexString("#b69cff");
     const jade = Color3.FromHexString("#8ee3c0");
+    const peach = Color3.FromHexString("#ffb893");
     const ink = Color3.FromHexString("#f5f0ff");
     const root = new TransformNode(`root-${mode}`, scene);
     const lineMaterials: LineMaterial[] = [];
-    const selectable: Mesh[] = [];
-    const groups = new Map<string, Mesh[]>();
-    const makeWireMaterial = (name: string, color: Color3, alpha = 0.62) => {
+    const unitMeshes: Mesh[] = [];
+    const projectMeshes = new Map<string, Mesh[]>();
+    const view = {
+      hiddenTowers: [] as TowerFilter[],
+      unitType: null as UnitType | null,
+      maxFloor: 25,
+      selectedId: "",
+      matches: [] as string[],
+    };
+    const makeWireMaterial = (name: string, color: Color3, alpha = 0.72) => {
       const material = new StandardMaterial(name, scene);
       material.wireframe = true;
       material.disableLighting = true;
       material.emissiveColor = color;
+      material.diffuseColor = color;
+      material.specularColor = Color3.Black();
       material.alpha = alpha;
+      material.backFaceCulling = false;
+      material.forceDepthWrite = true;
       return material;
     };
-    const violetWire = makeWireMaterial(`violet-${mode}`, violet, 0.9);
-    const jadeWire = makeWireMaterial(`jade-${mode}`, jade, 0.68);
-    const quietWire = makeWireMaterial(`quiet-${mode}`, ink, mode === "platform" ? 0.28 : 0.34);
+    const colorless = makeWireMaterial(`colorless-${mode}`, ink, 0.72);
+    const typeBright: Record<UnitType, StandardMaterial> = {
+      "Type A": makeWireMaterial(`type-a-hot-${mode}`, violet, 1),
+      "Type B": makeWireMaterial(`type-b-hot-${mode}`, jade, 1),
+      "Type C": makeWireMaterial(`type-c-hot-${mode}`, peach, 1),
+    };
+    const matchWire = makeWireMaterial(`match-${mode}`, jade, 0.9);
+    const pickWire = makeWireMaterial(`pick-${mode}`, violet, 1);
     const makeRoute = (name: string, points: Vector3[], color: Color3, dashed = true, width = 0.07) => {
-      const line = builder.CreateGreasedLine(name, { points }, {
-        materialType: materials.GreasedLineMeshMaterialType.MATERIAL_TYPE_SIMPLE,
-        color, width, useDash: dashed, dashCount: 24, dashRatio: 0.36, sizeAttenuation: false,
-      }, scene);
-      line.parent = root;
-      const material = line.material as unknown as LineMaterial | null;
-      if (material) lineMaterials.push(material);
-      return line;
-    };
-    const createBuilding = (x: number, z: number, floors: number, width: number, depth: number, material: StandardMaterial, label: string) => {
-      const meshes: Mesh[] = [];
-      for (let floorIndex = 0; floorIndex < floors; floorIndex += 1) {
-        const mesh = CreateBox(`${label}-${floorIndex + 1}`, { width, depth, height: 0.42 }, scene);
-        mesh.position.set(x, floorIndex * 0.47 + 0.28, z);
-        mesh.material = material;
-        mesh.parent = root;
-        mesh.metadata = { tower: label, floor: floorIndex + 8 };
-        meshes.push(mesh);
-        if (mode === "gamuda") selectable.push(mesh);
+      try {
+        const line = CreateGreasedLine(name, { points }, {
+          materialType: GreasedLineMeshMaterialType.MATERIAL_TYPE_SIMPLE,
+          color, width, useDash: dashed, dashCount: 24, dashRatio: 0.36, sizeAttenuation: false,
+        }, scene);
+        line.parent = root;
+        line.isPickable = false;
+        const material = line.material as unknown as LineMaterial | null;
+        if (material) lineMaterials.push(material);
+        return line;
+      } catch {
+        return null;
       }
-      groups.set(label, meshes);
     };
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const paintGamuda = () => {
+      unitMeshes.forEach((mesh) => {
+        const meta = mesh.metadata as UnitPick;
+        const towerHidden = view.hiddenTowers.includes(meta.tower as TowerFilter);
+        const floorHidden = meta.floor > view.maxFloor;
+        mesh.isVisible = !towerHidden && !floorHidden;
+        if (!mesh.isVisible) return;
+        if (view.selectedId) mesh.material = view.selectedId === meta.id ? typeBright[meta.type] : colorless;
+        else if (view.unitType === meta.type) mesh.material = typeBright[meta.type];
+        else mesh.material = colorless;
+      });
+    };
+    const paintPlatform = () => {
+      projectMeshes.forEach((meshes, label) => {
+        const selected = view.selectedId === label;
+        const matched = view.matches.includes(label);
+        meshes.forEach((mesh) => {
+          if (selected) mesh.material = pickWire;
+          else if (matched) mesh.material = matchWire;
+          else mesh.material = colorless;
+        });
+      });
+    };
+    const paint = () => { if (mode === "gamuda") paintGamuda(); else paintPlatform(); };
 
-    const gridSize = mode === "platform" ? 8 : 7;
-    for (let line = -gridSize; line <= gridSize; line += 1) {
-      makeRoute(`grid-x-${line}`, [new Vector3(-gridSize, 0, line), new Vector3(gridSize, 0, line)], ink, false, 0.012);
-      makeRoute(`grid-z-${line}`, [new Vector3(line, 0, -gridSize), new Vector3(line, 0, gridSize)], ink, false, 0.012);
-    }
     if (mode === "gamuda") {
-      createBuilding(-2.35, 0.1, 13, 2.7, 2.0, quietWire, "Tower A");
-      createBuilding(0, -0.35, 18, 2.45, 2.05, violetWire, "Tower B");
-      createBuilding(2.2, 0.25, 15, 2.55, 2.0, jadeWire, "Tower C");
+      const footprints = [
+        { id: "Tower 1", x: -2.35, z: 0.1, floors: 13, width: 2.7, depth: 2.0 },
+        { id: "Tower 2", x: 0, z: -0.35, floors: 18, width: 2.45, depth: 2.05 },
+        { id: "Tower 3", x: 2.2, z: 0.25, floors: 15, width: 2.55, depth: 2.0 },
+      ] as const;
+      footprints.forEach((tower) => {
+        for (let floorIndex = 0; floorIndex < tower.floors; floorIndex += 1) {
+          const layout = UNIT_LAYOUTS[floorIndex % UNIT_LAYOUTS.length];
+          const mesh = CreateBox(`${tower.id}-${floorIndex + 1}`, {
+            width: tower.width, depth: tower.depth, height: 0.42,
+          }, scene);
+          mesh.position.set(tower.x, floorIndex * 0.47 + 0.28, tower.z);
+          mesh.material = colorless;
+          mesh.parent = root;
+          mesh.metadata = {
+            id: `${tower.id}-${floorIndex + 8}-${layout.stack}`,
+            tower: tower.id,
+            floor: floorIndex + 8,
+            stack: layout.stack,
+            type: layout.type,
+            rooms: layout.rooms,
+            size: layout.size,
+          } satisfies UnitPick;
+          unitMeshes.push(mesh);
+        }
+      });
       makeRoute("gamuda-transit", [new Vector3(-7, 0.08, 4), new Vector3(-4, 0.08, 1.5), new Vector3(-1, 0.08, 3.2), new Vector3(2.2, 0.08, 1.2), new Vector3(7, 0.08, 3.5)], jade, true, 0.09);
     } else {
       const city = [
         [-4.3, -2.2, 5, 1.4, 1.2], [-2.2, 1.5, 8, 1.7, 1.5], [0, -1.5, 12, 2.0, 1.8],
         [2.4, 1.2, 7, 1.4, 1.5], [4.1, -2, 10, 1.6, 1.4], [4.5, 3.2, 5, 1.3, 1.3], [-4.8, 3.3, 6, 1.5, 1.2],
       ] as const;
-      city.forEach(([x, z, floors, width, depth], index) => createBuilding(x, z, floors, width, depth, quietWire, `Project ${index + 1}`));
+      city.forEach(([x, z, floors, width, depth], index) => {
+        const label = `Project ${index + 1}`;
+        const meshes: Mesh[] = [];
+        for (let floorIndex = 0; floorIndex < floors; floorIndex += 1) {
+          const mesh = CreateBox(`${label}-${floorIndex + 1}`, { width, depth, height: 0.42 }, scene);
+          mesh.position.set(x, floorIndex * 0.47 + 0.28, z);
+          mesh.material = colorless;
+          mesh.parent = root;
+          mesh.metadata = { id: label };
+          meshes.push(mesh);
+        }
+        projectMeshes.set(label, meshes);
+      });
       makeRoute("platform-route-a", [new Vector3(-7, 0.1, -4), new Vector3(-4.3, 0.1, -2.2), new Vector3(-2.2, 0.1, 1.5), new Vector3(0, 0.1, -1.5), new Vector3(4.1, 0.1, -2), new Vector3(7, 0.1, 0.2)], ink, true, 0.065);
       makeRoute("platform-route-b", [new Vector3(-6, 0.12, 4.5), new Vector3(-2.2, 0.12, 1.5), new Vector3(2.4, 0.12, 1.2), new Vector3(4.5, 0.12, 3.2), new Vector3(7, 0.12, 4)], ink, true, 0.055);
     }
 
-    const baseMaterial = (tower: string) => tower === "Tower B" ? violetWire : tower === "Tower C" ? jadeWire : quietWire;
-    const selectFloor = (tower: string, floor: number) => {
-      groups.forEach((meshes, label) => meshes.forEach((mesh) => { mesh.material = baseMaterial(label); }));
-      const mesh = groups.get(tower)?.find((candidate) => candidate.metadata?.floor === floor);
-      if (mesh) mesh.material = violetWire;
-      setStatus(`${tower} · Level ${String(floor).padStart(2, "0")} · units ready to inspect`);
-    };
-    const showMatches = (projects: string[]) => {
-      groups.forEach((meshes, label) => meshes.forEach((mesh) => { mesh.material = projects.includes(label) ? violetWire : quietWire; }));
-      setStatus(projects.length ? `${projects.length} matching developments highlighted` : "Drag to explore · ask for a match");
-    };
-    controlsRef.current = { selectFloor, showMatches };
-
-    if (mode === "gamuda") {
-      scene.onPointerObservable.add((pointerInfo) => {
-        if (pointerInfo.type !== PointerEventTypes.POINTERPICK) return;
-        const mesh = pointerInfo.pickInfo?.pickedMesh as Mesh | null;
-        if (!mesh || !selectable.includes(mesh)) return;
-        const tower = String(mesh.metadata?.tower ?? "Tower B");
-        const floor = Number(mesh.metadata?.floor ?? 12);
-        setSelectedTower(tower);
-        setSelectedFloor(floor);
-        setPanelTab("towers");
-        setPanelOpen(true);
-        selectFloor(tower, floor);
-      });
+    const gridSize = mode === "platform" ? 8 : 7;
+    for (let line = -gridSize; line <= gridSize; line += 1) {
+      makeRoute(`grid-x-${line}`, [new Vector3(-gridSize, 0, line), new Vector3(gridSize, 0, line)], ink, false, 0.012);
+      makeRoute(`grid-z-${line}`, [new Vector3(line, 0, -gridSize), new Vector3(line, 0, gridSize)], ink, false, 0.012);
     }
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    controlsRef.current = {
+      setFilters: (nextHiddenTowers, unitType, selectedId) => {
+        view.hiddenTowers = nextHiddenTowers;
+        view.unitType = unitType;
+        view.selectedId = selectedId;
+        paint();
+      },
+      setMaxFloor: (floor) => {
+        view.maxFloor = floor;
+        paint();
+      },
+      showMatches: (projects) => {
+        view.matches = projects;
+        paint();
+        setStatus(projects.length ? `${projects.length} matching developments highlighted` : "Drag to explore · tap a development");
+      },
+      resetCamera: () => {
+        view.selectedId = "";
+        paint();
+        camera.alpha = startAlpha;
+        camera.beta = startBeta;
+        camera.radius = startRadius;
+        camera.target.copyFrom(startTarget);
+      },
+    };
+
+    let pointerStart = { x: 0, y: 0 };
+    const pickFromEvent = (event: PointerEvent) => {
+      const bounds = canvas.getBoundingClientRect();
+      if (bounds.width < 2 || bounds.height < 2) return;
+      const pick = scene.pick(
+        (event.clientX - bounds.left) * (canvas.width / bounds.width),
+        (event.clientY - bounds.top) * (canvas.height / bounds.height),
+        (candidate) => mode === "gamuda"
+          ? candidate.isVisible && unitMeshes.includes(candidate as Mesh)
+          : projectMeshes.get(String(candidate.metadata?.id ?? ""))?.includes(candidate as Mesh) === true,
+      );
+      const mesh = pick.pickedMesh as Mesh | null;
+      if (!pick.hit || !mesh?.metadata) return;
+      if (mode === "gamuda") {
+        if (!unitMeshes.includes(mesh)) return;
+        const unit = mesh.metadata as UnitPick;
+        view.selectedId = unit.id;
+        view.unitType = null;
+        paint();
+        setSelectedUnit(unit);
+        setSelectedUnitType(null);
+        setPanelOpen(true);
+        setStatus(`${unit.tower} · ${unit.type} · ${unit.id.replace("Tower ", "")}`);
+        return;
+      }
+      const projectId = String(mesh.metadata.id ?? "");
+      const project = PLATFORM_PROJECTS.find((item) => item.id === projectId);
+      if (!project) return;
+      view.selectedId = project.id;
+      paint();
+      setSelectedProject(project);
+      setPanelOpen(true);
+      setStatus(`${project.name} · tap another development or ask for a match`);
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      pointerStart = { x: event.clientX, y: event.clientY };
+    };
+    const handlePointerUp = (event: PointerEvent) => {
+      if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 6) return;
+      pickFromEvent(event);
+    };
+    canvas.addEventListener("pointerdown", handlePointerDown);
+    canvas.addEventListener("pointerup", handlePointerUp);
+    scene.onPointerObservable.add((pointerInfo) => {
+      if (pointerInfo.type !== PointerEventTypes.POINTERPICK) return;
+      const event = pointerInfo.event as PointerEvent | undefined;
+      if (event) pickFromEvent(event);
+    });
+
     let visible = true;
-    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }, { rootMargin: "160px" });
-    observer.observe(canvas);
+    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }, { rootMargin: "240px" });
+    observer.observe(viewport);
     scene.onBeforeRenderObservable.add(() => { if (!reducedMotion) lineMaterials.forEach((material) => { material.dashOffset -= 0.003; }); });
-    engine.runRenderLoop(() => { if (visible) scene.render(); });
-    const resize = new ResizeObserver(() => engine.resize());
-    resize.observe(canvas);
+    const fitEngine = () => {
+      if (viewport.clientWidth < 2 || viewport.clientHeight < 2) return;
+      engine.resize();
+    };
+    fitEngine();
+    const raf = window.requestAnimationFrame(() => {
+      fitEngine();
+      window.requestAnimationFrame(fitEngine);
+    });
+    engine.runRenderLoop(() => { if (!document.hidden && visible) scene.render(); });
+    const onWinResize = () => fitEngine();
+    window.addEventListener("resize", onWinResize);
+    const resize = new ResizeObserver(fitEngine);
+    resize.observe(viewport);
     return () => {
-      controlsRef.current = { selectFloor: () => {}, showMatches: () => {} };
+      controlsRef.current = { setFilters: () => {}, setMaxFloor: () => {}, showMatches: () => {}, resetCamera: () => {} };
+      canvas.removeEventListener("pointerdown", handlePointerDown);
+      canvas.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("resize", onWinResize);
+      window.cancelAnimationFrame(raf);
       observer.disconnect();
       resize.disconnect();
       scene.dispose();
@@ -215,16 +389,27 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     };
   }, [mode]);
 
-  const chooseTower = (tower: string) => {
-    const towerData = TOWERS.find((item) => item.id === tower) ?? TOWERS[1];
-    const floor = Math.min(Math.max(selectedFloor, towerData.start), towerData.start + towerData.floors - 1);
-    setSelectedTower(tower);
-    setSelectedFloor(floor);
-    controlsRef.current.selectFloor(tower, floor);
+  const floorMin = 8;
+  const floorMax = 25;
+  const chooseTower = (tower: TowerFilter) => {
+    const hiding = !hiddenTowers.includes(tower);
+    const nextHiddenTowers = hiding
+      ? [...hiddenTowers, tower]
+      : hiddenTowers.filter((item) => item !== tower);
+    const hidesSelection = hiding && selectedUnit?.tower === tower;
+    setHiddenTowers(nextHiddenTowers);
+    if (hidesSelection) setSelectedUnit(null);
+    controlsRef.current.setFilters(nextHiddenTowers, selectedUnitType, hidesSelection ? "" : selectedUnit?.id ?? "");
   };
-  const chooseFloor = (floor: number) => {
-    setSelectedFloor(floor);
-    controlsRef.current.selectFloor(selectedTower, floor);
+  const chooseUnitType = (unitType: UnitType) => {
+    const nextType = selectedUnitType === unitType ? null : unitType;
+    setSelectedUnitType(nextType);
+    setSelectedUnit(null);
+    controlsRef.current.setFilters(hiddenTowers, nextType, "");
+  };
+  const chooseMaxFloor = (floor: number) => {
+    setMaxFloor(floor);
+    controlsRef.current.setMaxFloor(floor);
   };
   const chooseChatResult = (result: ChatResult) => {
     setChatResult(result);
@@ -233,65 +418,130 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
   const resetChat = () => {
     setChatTopic(null);
     setChatResult(null);
+    setSelectedProject(null);
     controlsRef.current.showMatches([]);
+    controlsRef.current.resetCamera();
   };
-  const activeTower = TOWERS.find((tower) => tower.id === selectedTower) ?? TOWERS[1];
+  const resetView = () => {
+    setSelectedUnit(null);
+    setSelectedProject(null);
+    setHiddenTowers([]);
+    setSelectedUnitType(null);
+    setMaxFloor(25);
+    controlsRef.current.setFilters([], null, "");
+    controlsRef.current.resetCamera();
+  };
   const selectedProjects = chatResult ? PLATFORM_PROJECTS.filter((project) => chatResult.matches.includes(project.id)) : [];
+  const unitCode = selectedUnit ? `${selectedUnit.tower.slice(-1)}-${String(selectedUnit.floor).padStart(2, "0")}-${selectedUnit.stack}` : null;
 
   return (
-    <div className={`babylon-stage babylon-${mode}`}>
-      <div className={`scene-fallback scene-fallback-${mode}`} aria-hidden="true">
-        <span className="scene-fallback-grid" /><span className="scene-fallback-building scene-fallback-building-a" />
-        <span className="scene-fallback-building scene-fallback-building-b" /><span className="scene-fallback-building scene-fallback-building-c" />
-        <span className="scene-fallback-route scene-fallback-route-a" /><span className="scene-fallback-route scene-fallback-route-b" />
+    <div className={`babylon-stage babylon-${mode} ${panelOpen ? "is-open" : "is-collapsed"}`}>
+      <div className="babylon-viewport" ref={viewportRef}>
+        <div className={`scene-fallback scene-fallback-${mode}`} aria-hidden="true">
+          <span className="scene-fallback-grid" /><span className="scene-fallback-building scene-fallback-building-a" />
+          <span className="scene-fallback-building scene-fallback-building-b" /><span className="scene-fallback-building scene-fallback-building-c" />
+          <span className="scene-fallback-route scene-fallback-route-a" /><span className="scene-fallback-route scene-fallback-route-b" />
+        </div>
+        <canvas ref={canvasRef} aria-label={`${mode} interactive line-art property preview`} />
+        <div className="scene-status" aria-live="polite">{status}</div>
+        <button
+          className="property-dock-toggle"
+          type="button"
+          aria-expanded={panelOpen}
+          aria-controls={`property-dock-${mode}`}
+          aria-label={panelOpen ? "Collapse panel" : "Expand panel"}
+          onClick={() => setPanelOpen((open) => !open)}
+        >
+          <span className="property-dock-icon-wide" aria-hidden="true">{panelOpen ? "›" : "‹"}</span>
+          <span className="property-dock-icon-tall" aria-hidden="true">{panelOpen ? "⌃" : "⌄"}</span>
+        </button>
       </div>
-      <canvas ref={canvasRef} aria-label={`${mode} interactive line-art property preview`} />
-      <div className="scene-status" aria-live="polite">{status}</div>
 
-      {mode === "gamuda" ? (
-        <>
-          <button className="property-panel-trigger" type="button" aria-expanded={panelOpen} onClick={() => setPanelOpen((open) => !open)}><span aria-hidden="true">⌁</span> Explore project</button>
-          {panelOpen ? (
-            <aside className="property-panel" aria-label="Project explorer">
-              <div className="property-panel-head"><div><span>GO540 WEB</span><strong>HauS on 15</strong></div><button type="button" aria-label="Close project explorer" onClick={() => setPanelOpen(false)}>×</button></div>
-              <div className="property-tabs" role="tablist" aria-label="Project information">
-                {(["project", "towers", "facilities"] as ExplorerTab[]).map((tab) => <button type="button" role="tab" aria-selected={panelTab === tab} onClick={() => setPanelTab(tab)} key={tab}>{tab}</button>)}
+      <div className="property-dock" id={`property-dock-${mode}`} aria-hidden={!panelOpen}>
+        {mode === "gamuda" ? (
+          <>
+            <section className="property-control" aria-label="Project controls">
+              <div className="property-panel-head">
+                <div><span>GO540 WEB</span><strong>HauS on 15</strong></div>
+                <button type="button" onClick={resetView}>Reset view</button>
               </div>
-              {panelTab === "project" ? (
-                <div className="property-panel-copy"><span className="panel-kicker">Interactive sales experience</span><h3>Explore before visiting.</h3><p>Orbit the development, choose a tower and inspect sample unit information in one place.</p><dl><div><dt>Location</dt><dd>Subang Jaya</dd></div><div><dt>Experience</dt><dd>Web · mobile · showroom</dd></div></dl><button type="button" onClick={() => setPanelTab("towers")}>Choose a tower →</button></div>
-              ) : null}
-              {panelTab === "towers" ? (
-                <div className="tower-browser">
-                  <div className="tower-options">{TOWERS.map((tower) => <button type="button" className={selectedTower === tower.id ? "active" : ""} onClick={() => chooseTower(tower.id)} key={tower.id}>{tower.id.replace("Tower ", "")}</button>)}</div>
-                  <p><strong>{selectedTower}</strong><span>{activeTower.note}</span></p>
-                  <div className="floor-options" aria-label={`${selectedTower} floors`}>{Array.from({ length: activeTower.floors }, (_, index) => activeTower.start + index).map((floor) => <button type="button" aria-pressed={selectedFloor === floor} onClick={() => chooseFloor(floor)} key={floor}>{String(floor).padStart(2, "0")}</button>)}</div>
-                  <div className="unit-list">{UNIT_LAYOUTS.map((unit) => <article key={unit.stack}><span>{selectedTower.slice(-1)}-{String(selectedFloor).padStart(2, "0")}-{unit.stack}</span><strong>{unit.type}</strong><small>{unit.rooms} · {unit.size}</small></article>)}</div>
-                  <small className="sample-note">Illustrative unit data for this portfolio demo.</small>
+              <div className="tower-browser">
+                <p className="panel-kicker">Towers</p>
+                <div className="tower-options">
+                  {TOWERS.map((tower) => (
+                    <button
+                      type="button"
+                      aria-label={hiddenTowers.includes(tower.id) ? `Show ${tower.id}` : `Hide ${tower.id}`}
+                      aria-pressed={hiddenTowers.includes(tower.id)}
+                      className={hiddenTowers.includes(tower.id) ? "hidden" : ""}
+                      onClick={() => chooseTower(tower.id)}
+                      key={tower.id}
+                    >
+                      {tower.id.replace("Tower ", "")}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-              {panelTab === "facilities" ? (
-                <div className="facility-list">
-                  <article><span>01</span><div><strong>Arrival court</strong><small>Drop-off and lobby connection</small></div></article>
-                  <article><span>02</span><div><strong>Pool deck</strong><small>Family pool and shaded seating</small></div></article>
-                  <article><span>03</span><div><strong>Sky garden</strong><small>Elevated green and social space</small></div></article>
-                  <article><span>04</span><div><strong>Transit link</strong><small>Walking route shown on the map</small></div></article>
+                <p>
+                  <strong>{TOWERS.length - hiddenTowers.length} towers visible</strong>
+                  <span>Tap a number to hide or show that tower</span>
+                </p>
+                <label className="floor-slider">
+                  <span>Floor visibility · {String(maxFloor).padStart(2, "0")}</span>
+                  <input type="range" min={floorMin} max={floorMax} value={Math.min(Math.max(maxFloor, floorMin), floorMax)} onChange={(event) => chooseMaxFloor(Number(event.target.value))} />
+                </label>
+                <p className="panel-kicker unit-type-heading">Unit types</p>
+                <div className="unit-type-options" aria-label="Floor plan types">
+                  {UNIT_LAYOUTS.map((layout) => (
+                    <button
+                      type="button"
+                      aria-pressed={selectedUnitType === layout.type}
+                      className={selectedUnitType === layout.type ? "active" : ""}
+                      onClick={() => chooseUnitType(layout.type)}
+                      key={layout.type}
+                    >
+                      <i style={{ background: TYPE_COLORS[layout.type] }} aria-hidden="true" />
+                      {layout.type.replace("Type ", "")}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
+              </div>
+            </section>
+            <section className="property-details" aria-label="Unit details">
+              <p className="panel-kicker">Details</p>
+              {selectedUnit && unitCode ? (
+                <dl className="unit-detail">
+                  <div><dt>Unit</dt><dd>{unitCode}</dd></div>
+                  <div><dt>Type</dt><dd>{selectedUnit.type}</dd></div>
+                  <div><dt>Layout</dt><dd>{selectedUnit.rooms}</dd></div>
+                  <div><dt>Size</dt><dd>{selectedUnit.size}</dd></div>
+                </dl>
+              ) : <p className="details-empty">Click a unit in the viewport.</p>}
+            </section>
+          </>
+        ) : (
+          <>
+            <aside className="property-control property-chat" aria-label="Guided property discovery">
+              <div className="chat-head"><span aria-hidden="true">✦</span><div><strong>Property guide</strong><small>Sample conversation</small></div></div>
+              {!chatTopic ? (
+                <div className="chat-step"><p>How may I assist you?</p><div className="chat-choices">{(Object.keys(CHAT_PATHS) as ChatTopic[]).map((topic) => <button type="button" onClick={() => setChatTopic(topic)} key={topic}>{CHAT_PATHS[topic].label}</button>)}</div></div>
+              ) : !chatResult ? (
+                <div className="chat-step"><button className="chat-back" type="button" onClick={() => setChatTopic(null)}>← Back</button><p>{CHAT_PATHS[chatTopic].followup}</p><div className="chat-choices">{CHAT_PATHS[chatTopic].choices.map((choice) => <button type="button" onClick={() => chooseChatResult(choice)} key={choice.label}>{choice.label}</button>)}</div></div>
+              ) : (
+                <div className="chat-step chat-result"><p>{chatResult.answer}</p><div className="match-list">{selectedProjects.map((project) => <article key={project.id}><span>{project.id.replace("Project ", "0")}</span><div><strong>{project.name}</strong><small>{project.note}</small></div></article>)}</div><button className="chat-reset" type="button" onClick={resetChat}>Start another search</button></div>
+              )}
             </aside>
-          ) : null}
-        </>
-      ) : (
-        <aside className="property-chat" aria-label="Guided property discovery">
-          <div className="chat-head"><span aria-hidden="true">✦</span><div><strong>Property guide</strong><small>Sample conversation</small></div></div>
-          {!chatTopic ? (
-            <div className="chat-step"><p>How may I assist you?</p><div className="chat-choices">{(Object.keys(CHAT_PATHS) as ChatTopic[]).map((topic) => <button type="button" onClick={() => setChatTopic(topic)} key={topic}>{CHAT_PATHS[topic].label}</button>)}</div></div>
-          ) : !chatResult ? (
-            <div className="chat-step"><button className="chat-back" type="button" onClick={() => setChatTopic(null)}>← Back</button><p>{CHAT_PATHS[chatTopic].followup}</p><div className="chat-choices">{CHAT_PATHS[chatTopic].choices.map((choice) => <button type="button" onClick={() => chooseChatResult(choice)} key={choice.label}>{choice.label}</button>)}</div></div>
-          ) : (
-            <div className="chat-step chat-result"><p>{chatResult.answer}</p><div className="match-list">{selectedProjects.map((project) => <article key={project.id}><span>{project.id.replace("Project ", "0")}</span><div><strong>{project.name}</strong><small>{project.note}</small></div></article>)}</div><button className="chat-reset" type="button" onClick={resetChat}>Start another search</button></div>
-          )}
-        </aside>
-      )}
+            <section className="property-details" aria-label="Development details">
+              <p className="panel-kicker">Details</p>
+              {selectedProject ? (
+                <dl className="unit-detail">
+                  <div><dt>Project</dt><dd>{selectedProject.name}</dd></div>
+                  <div><dt>Note</dt><dd>{selectedProject.note}</dd></div>
+                </dl>
+              ) : <p className="details-empty">Click a development in the viewport.</p>}
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }
