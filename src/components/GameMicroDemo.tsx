@@ -1,9 +1,10 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import type { ArcadeScore } from "./GameCanvasRuntime";
+import type { ArcadeControls, ArcadeScore, UpgradeOption } from "./GameCanvasRuntime";
 import { SystemGameDemo } from "./SystemGameDemo";
 
 type GameMode = "system" | "nasi" | "infinity";
 interface SavedScore extends ArcadeScore { name: string; }
+interface PendingLevel { level: number; options: UpgradeOption[]; }
 
 const GameCanvas = lazy(() => import("./GameCanvasRuntime").then((module) => ({ default: module.GameCanvasRuntime })));
 
@@ -13,8 +14,8 @@ const gameCopy: Record<GameMode, { index: string; title: string; status: string;
     description: "An automatic turn-based extraction run where speed controls action order. The host searches for keys and loot, fights or flees from monsters that chase on sight, then unlocks the floor exit.",
   },
   nasi: {
-    index: "02", title: "Nasi Lemak Survivors", status: "Released · Google Play", instruction: "Automatic stall defence · unlimited levels",
-    description: "A nasi lemak aunty starts with basic nasi lemak biasa, then unlocks berapi and rendang as she levels — Vampire Survivors style stall defence.",
+    index: "02", title: "Nasi Lemak Survivors", status: "Released · Google Play", instruction: "Auto-attack · you pick every upgrade",
+    description: "A nasi lemak aunty defends her stall on her own, but every level up stops the run and hands you the choice — unlock a recipe, deepen one you have, or patch the stall.",
     href: "https://play.google.com/store/apps/details?id=com.eternalamaris.nasilemak.survivors",
   },
   infinity: {
@@ -30,12 +31,19 @@ function RuntimeFallback({ mode }: { mode: "nasi" | "infinity" }) {
 
 export function GameMicroDemo() {
   const stageRef = useRef<HTMLDivElement>(null);
+  const arcadeControls = useRef<ArcadeControls>({ applyUpgrade: () => {} });
   const [mode, setMode] = useState<GameMode>("system");
   const [started, setStarted] = useState(false);
   const [runScore, setRunScore] = useState<ArcadeScore | null>(null);
+  const [pendingLevel, setPendingLevel] = useState<PendingLevel | null>(null);
   const [scoreName, setScoreName] = useState("");
   const [scores, setScores] = useState<SavedScore[]>([]);
   const active = gameCopy[mode];
+
+  const chooseUpgrade = (id: string) => {
+    arcadeControls.current.applyUpgrade(id);
+    setPendingLevel(null);
+  };
 
   useEffect(() => {
     try {
@@ -59,6 +67,7 @@ export function GameMicroDemo() {
     setMode(next);
     setStarted(false);
     setRunScore(null);
+    setPendingLevel(null);
     revealStage();
   };
 
@@ -78,7 +87,13 @@ export function GameMicroDemo() {
         <div className="game-stage-topline"><span>{active.title}</span><span>{active.instruction}</span></div>
         {mode === "system" ? <SystemGameDemo /> : started ? (
           <Suspense fallback={<RuntimeFallback mode={mode} />}>
-            <GameCanvas mode={mode} title={active.title} onRunEnd={setRunScore} />
+            <GameCanvas
+              mode={mode}
+              title={active.title}
+              onRunEnd={setRunScore}
+              onLevelUp={(level, options) => setPendingLevel({ level, options })}
+              controlsRef={arcadeControls}
+            />
           </Suspense>
         ) : (
           <div className="game-start-shell">
@@ -87,21 +102,36 @@ export function GameMicroDemo() {
           </div>
         )}
 
+        {pendingLevel ? (
+          <div className="upgrade-choice" role="dialog" aria-modal="true" aria-label={`Level ${pendingLevel.level} upgrade`}>
+            <div className="upgrade-choice-inner">
+              <p className="panel-kicker">Level {pendingLevel.level} · choose one</p>
+              <div className="upgrade-options">
+                {pendingLevel.options.map((option) => (
+                  <button type="button" onClick={() => chooseUpgrade(option.id)} key={option.id}>
+                    <strong>{option.title}</strong>
+                    <small>{option.detail}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {started && mode === "nasi" ? (
         <aside className="arcade-legend nasi-legend" aria-label="Nasi lemak weapons">
           <article><span>01</span><div><strong>Nasi lemak biasa</strong><small>Starts unlocked · single customer</small></div></article>
-          <article><span>02</span><div><strong>Nasi lemak berapi</strong><small>Unlocks on level up · area damage</small></div></article>
-          <article><span>03</span><div><strong>Nasi lemak rendang</strong><small>Unlocks later · piercing</small></div></article>
-          <p>Start with biasa. Level up to unlock berapi, then rendang. Weapons and passives keep upgrading with no cap.</p>
+          <article><span>02</span><div><strong>Nasi lemak berapi</strong><small>Offered on level up · area damage</small></div></article>
+          <article><span>03</span><div><strong>Nasi lemak rendang</strong><small>Offered on level up · piercing</small></div></article>
+          <p>The aunty serves on her own, but every level up pauses the run and you choose the upgrade — tap or click a card. Weapons and passives have no cap.</p>
         </aside>
       ) : null}
       {started && mode === "infinity" ? (
         <aside className="arcade-legend infinity-legend" aria-label="Tower controls and hazards">
-          <article><span>← →</span><div><strong>Move</strong><small>A / D or tap the left and right zones</small></div></article>
-          <article><span>↑</span><div><strong>Jump</strong><small>Space or tap the centre zone</small></div></article>
-          <p>Lavender shots home slowly. Jade shots travel straight. Peach spikes and every projectile only knock you back.</p>
+          <article><span>← →</span><div><strong>Move</strong><small>A / D, or hold the left and right zones</small></div></article>
+          <article><span>↑</span><div><strong>Jump</strong><small>Space, or tap the centre zone</small></div></article>
+          <p>Sixty seconds to climb as high as you can. On touch the three zones are outlined along the bottom and hold works — keep a finger down to keep moving. Lavender shots home slowly, jade shots travel straight, and every hit only knocks you back.</p>
         </aside>
       ) : null}
 

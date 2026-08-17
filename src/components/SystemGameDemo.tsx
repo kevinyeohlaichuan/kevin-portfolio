@@ -8,6 +8,25 @@ type MonsterKind = "basic" | "elite" | "boss";
 type HostAction = "search" | "hit" | "run" | "move";
 type RunOutcome = "success" | "failure" | "timeout";
 
+type EquipSlot = "weapon" | "armour" | "talisman";
+type PillKind = "hp" | "exp" | "stat";
+
+interface Equipment {
+  id: string;
+  slot: EquipSlot;
+  name: string;
+  tier: number;
+  atk: number;
+  def: number;
+  speed: number;
+  value: number;
+}
+
+interface Skill {
+  id: string;
+  uses: number;
+}
+
 interface Profile {
   hostLevel: number;
   hostExp: number;
@@ -22,6 +41,10 @@ interface Profile {
   dungeon: number;
   maxDungeon: number;
   behaviours: Record<Behaviour, number>;
+  equipped: Record<EquipSlot, Equipment | null>;
+  skills: Skill[];
+  pills: Record<PillKind, number>;
+  stones: number;
 }
 
 interface RoomFeature {
@@ -45,11 +68,25 @@ interface Monster {
 interface RunState {
   dungeon: number;
   size: number;
+  seed: number;
   hostCell: number;
   visited: number[];
   hp: number;
   maxHp: number;
   loot: number;
+  // The host's working sheet for this run. Merged back into the profile when the
+  // run settles, so the autonomous decisions stay a pure function of run state.
+  hostLevel: number;
+  hostExp: number;
+  statPointsGained: number;
+  kills: number;
+  equipped: Record<EquipSlot, Equipment | null>;
+  skills: Skill[];
+  pills: Record<PillKind, number>;
+  pillsUsed: Record<PillKind, number>;
+  learned: string[];
+  scrapped: Equipment[];
+  found: string[];
   turn: number;
   elapsed: number;
   timeLimit: number;
@@ -69,6 +106,11 @@ interface RunResult {
   success: boolean;
   nearDeath: boolean;
   summary: string;
+  ledger: Settlement["ledger"];
+  closing: number;
+  kills: number;
+  learned: string[];
+  pillsUsed: Record<PillKind, number>;
 }
 
 interface Score {
@@ -90,6 +132,66 @@ const SCORE_KEY = "kevin-portfolio-system-scores-v1";
 const SIGIL_NAMES = ["Moon", "Sun", "Star", "Void", "Cloud", "Flame", "Tide", "Stone"];
 const TIME_ALERT_THRESHOLD = 100;
 
+// ── Loot, skills and equipment ───────────────────────────────────────────────
+// The host acts alone: it learns any book it finds, wears whatever scores higher,
+// swallows a pill when the situation calls for it, and settles the accounts after
+// the run. The player never picks an item — they only shape the behaviour.
+
+const EQUIP_SLOTS: EquipSlot[] = ["weapon", "armour", "talisman"];
+const EQUIP_NAMES: Record<EquipSlot, string[]> = {
+  weapon: ["Ironwood Sword", "Cloudsplitter Blade", "Nine-Ring Sabre", "Frostvein Spear", "Thunderfall Dao"],
+  armour: ["Plain Dao Robe", "Cloudveil Vest", "Stonehide Mail", "Moonsilk Robe", "Starforge Plate"],
+  talisman: ["Jade Breath Ring", "Windstep Charm", "Ember Seal", "Tideheart Pendant", "Hollow Bell"],
+};
+const SLOT_LABELS: Record<EquipSlot, string> = { weapon: "Weapon", armour: "Armour", talisman: "Talisman" };
+
+const SKILL_LIBRARY: Array<{ id: string; name: string; trigger: HostAction; detail: string }> = [
+  { id: "rend", name: "破 Cloudsplitter Rend", trigger: "hit", detail: "Adds damage on every 打 Hit" },
+  { id: "evade", name: "遁 Falling Petal Step", trigger: "run", detail: "Softens blows while 跑 Run is active" },
+  { id: "perceive", name: "察 Spirit Perception", trigger: "search", detail: "Recovers more from every 搜 Search" },
+];
+
+const PILL_LABELS: Record<PillKind, { name: string; detail: string }> = {
+  hp: { name: "Blood-return pill", detail: "Swallowed below 35% HP" },
+  exp: { name: "Qi-gathering pill", detail: "Swallowed on the way out" },
+  stat: { name: "Marrow-forging pill", detail: "Permanent stat point" },
+};
+const PILL_VALUE: Record<PillKind, number> = { hp: 12, exp: 20, stat: 34 };
+const PILL_STOCK_TARGET = 3;
+
+// Levels come from mobs, so the first few have to land inside a single floor.
+const expForLevel = (level: number) => 60 + (level - 1) * 40;
+
+// Skills level from use, not from spending. Level 2 at 8 uses, 3 at 24, and so on.
+const skillLevel = (uses: number) => 1 + Math.floor(Math.sqrt(uses / 8));
+const usesForNextLevel = (uses: number) => 8 * (skillLevel(uses)) ** 2;
+const skillMeta = (id: string) => SKILL_LIBRARY.find((entry) => entry.id === id) ?? SKILL_LIBRARY[0];
+const equipmentScore = (item: Equipment | null) => (item ? item.atk * 2 + item.def * 1.6 + item.speed * 1.8 : 0);
+
+// Mulberry32. Keeps drops random but replayable from the run's own seed, so
+// advanceRun stays pure and a run can be reproduced exactly.
+const roll = (seed: number) => {
+  let t = (seed + 0x6d2b79f5) | 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+const makeEquipment = (slot: EquipSlot, dungeon: number, draw: number, sequence: number): Equipment => {
+  const tier = Math.min(EQUIP_NAMES[slot].length, 1 + Math.floor(dungeon / 3) + (draw > 0.82 ? 1 : 0));
+  const power = tier + Math.floor(dungeon / 2);
+  return {
+    id: `${slot}-${dungeon}-${sequence}`,
+    slot,
+    name: EQUIP_NAMES[slot][tier - 1],
+    tier,
+    atk: slot === "weapon" ? 2 + power : 0,
+    def: slot === "armour" ? 2 + power : 0,
+    speed: slot === "talisman" ? 1 + Math.ceil(power / 2) : 0,
+    value: 14 + tier * 9,
+  };
+};
+
 const freshProfile = (): Profile => ({
   hostLevel: 1,
   hostExp: 0,
@@ -104,7 +206,21 @@ const freshProfile = (): Profile => ({
   dungeon: 1,
   maxDungeon: 0,
   behaviours: { greed: 0, caution: 0, battle: 0, curiosity: 0 },
+  equipped: { weapon: null, armour: null, talisman: null },
+  skills: [],
+  pills: { hp: 2, exp: 0, stat: 0 },
+  stones: 30,
 });
+
+const equippedBonus = (equipped: Record<EquipSlot, Equipment | null>) =>
+  EQUIP_SLOTS.reduce(
+    (total, slot) => {
+      const item = equipped[slot];
+      if (item) { total.atk += item.atk; total.def += item.def; total.speed += item.speed; }
+      return total;
+    },
+    { atk: 0, def: 0, speed: 0 },
+  );
 
 const TABS: Array<{ id: SystemTab; icon: string; label: string }> = [
   { id: "stats", icon: "十", label: "Stats" },
@@ -146,7 +262,9 @@ const featureCell = (run: RunState, predicate: (feature: RoomFeature) => boolean
   return entry ? Number(entry[0]) : undefined;
 };
 
-const buildRun = (dungeon: number, def: number): RunState => {
+const buildRun = (profile: Profile): RunState => {
+  const dungeon = profile.dungeon;
+  const def = profile.def + equippedBonus(profile.equipped).def;
   const size = dungeon % 2 === 0 ? 9 : 7;
   const large = size === 9;
   const cells = large
@@ -196,14 +314,29 @@ const buildRun = (dungeon: number, def: number): RunState => {
   return {
     dungeon,
     size,
+    seed: dungeon * 7919 + profile.hostLevel * 131 + profile.maxDungeon * 17,
     hostCell: 0,
     visited: [0],
     hp: maxHp,
     maxHp,
     loot: 0,
+    hostLevel: profile.hostLevel,
+    hostExp: profile.hostExp,
+    statPointsGained: 0,
+    kills: 0,
+    equipped: { ...profile.equipped },
+    skills: profile.skills.map((skill) => ({ ...skill })),
+    pills: { ...profile.pills },
+    pillsUsed: { hp: 0, exp: 0, stat: 0 },
+    learned: [],
+    scrapped: [],
+    found: [],
     turn: 1,
     elapsed: 0,
-    timeLimit: large ? 420 : 320,
+    // At SPD 5 an action costs 20 time, so this is the action budget. The shortest
+    // key-chest-sigil-exit route is ~16 actions: leave enough slack to fight, run
+    // and detour, but not so much that the door timer stops mattering.
+    timeLimit: large ? 660 : 500,
     timerWarned: false,
     hostNextTurn: 0,
     lastAction: "Awaiting deployment",
@@ -318,14 +451,17 @@ const chooseHostAction = (run: RunState, profile: Profile): HostDecision => {
   const urgent = run.timeLimit - run.elapsed <= TIME_ALERT_THRESHOLD;
   const retreatAt = Math.min(0.78, Math.max(0.2, 0.3 + profile.behaviours.caution * 0.004 - profile.behaviours.battle * 0.002));
 
+  // Standing on the way out beats every other instinct. Checked before the
+  // threat response, or the host flees off the open door and dies on the timer.
+  const standingOn = run.features[run.hostCell];
+  if ((standingOn?.type === "exit" && run.sigilCollected) || (standingOn?.type === "sigil" && !run.sigilCollected)) {
+    return { action: "search", independent };
+  }
+
   if (urgent && nearestThreatGap(run.hostCell, living, run.size) <= 3) {
     return { action: "run", independent };
   }
   if (urgent) {
-    const urgentFeature = run.features[run.hostCell];
-    if ((urgentFeature?.type === "sigil" && !run.sigilCollected) || (urgentFeature?.type === "exit" && run.sigilCollected)) {
-      return { action: "search", independent };
-    }
     return { action: "move", targetCell: chooseObjective(run, profile, independent), independent };
   }
 
@@ -360,6 +496,107 @@ const appendLog = (run: RunState, messages: string[]) => {
   run.log = [...run.log, ...messages].slice(-4);
 };
 
+const draw = (run: RunState) => {
+  run.seed += 1;
+  return roll(run.seed);
+};
+
+// Every kill feeds the host directly, so levels come from beating mobs rather
+// than from surviving to the exit.
+const gainExperience = (run: RunState, amount: number, messages: string[]) => {
+  run.hostExp += amount;
+  while (run.hostExp >= expForLevel(run.hostLevel)) {
+    run.hostExp -= expForLevel(run.hostLevel);
+    run.hostLevel += 1;
+    run.statPointsGained += 3;
+    run.hp = Math.min(run.maxHp, run.hp + 12);
+    messages.push(`LEVEL UP · host reaches Lv.${run.hostLevel} · +3 stat points.`);
+  }
+};
+
+const useSkill = (run: RunState, trigger: HostAction) => {
+  const entry = run.skills.find((skill) => skillMeta(skill.id).trigger === trigger);
+  if (!entry) return 0;
+  const before = skillLevel(entry.uses);
+  entry.uses += 1;
+  const after = skillLevel(entry.uses);
+  return after > before ? after : 0;
+};
+
+const skillPower = (run: RunState, trigger: HostAction) => {
+  const entry = run.skills.find((skill) => skillMeta(skill.id).trigger === trigger);
+  return entry ? skillLevel(entry.uses) : 0;
+};
+
+// The host wears whatever scores higher and keeps the old piece to sell.
+const considerEquipment = (run: RunState, item: Equipment, messages: string[]) => {
+  const current = run.equipped[item.slot];
+  if (equipmentScore(item) <= equipmentScore(current)) {
+    run.scrapped.push(item);
+    messages.push(`Kept for sale · ${item.name} is weaker than the equipped ${SLOT_LABELS[item.slot].toLowerCase()}.`);
+    return;
+  }
+  if (current) run.scrapped.push(current);
+  run.equipped[item.slot] = item;
+  messages.push(`Auto-equipped · ${item.name}${current ? ` replaces ${current.name}` : ""}.`);
+};
+
+const rollDrop = (run: RunState, richness: number, messages: string[]) => {
+  // A host with no manual at all gets one from its first drop, so the auto-learn
+  // behaviour is visible rather than waiting on the dice.
+  const pick = run.skills.length === 0 ? 0.7 : draw(run);
+  if (pick < 0.34) {
+    const slot = EQUIP_SLOTS[Math.floor(draw(run) * EQUIP_SLOTS.length) % EQUIP_SLOTS.length];
+    const item = makeEquipment(slot, run.dungeon, draw(run), run.found.length);
+    run.found.push(item.name);
+    considerEquipment(run, item, messages);
+    return;
+  }
+  if (pick < 0.62) {
+    const kind: PillKind = draw(run) < 0.6 ? "hp" : draw(run) < 0.65 ? "stat" : "exp";
+    run.pills[kind] += 1;
+    run.found.push(PILL_LABELS[kind].name);
+    messages.push(`Found · ${PILL_LABELS[kind].name} (${run.pills[kind]} carried).`);
+    return;
+  }
+  if (pick < 0.78) {
+    const unknown = SKILL_LIBRARY.filter((entry) => !run.skills.some((skill) => skill.id === entry.id));
+    if (unknown.length) {
+      const book = unknown[Math.floor(draw(run) * unknown.length) % unknown.length];
+      run.skills.push({ id: book.id, uses: 0 });
+      run.learned.push(book.id);
+      run.found.push(`${book.name} manual`);
+      messages.push(`Auto-learned · ${book.name} read on the spot.`);
+      return;
+    }
+    const stones = 18 + run.dungeon * 3;
+    run.found.push("Duplicate manual");
+    run.loot += 1;
+    messages.push(`Duplicate manual · kept to sell for roughly ${stones} stones.`);
+    return;
+  }
+  run.loot += richness;
+  run.found.push(`${richness} spirit stone cache`);
+  messages.push(`Found · spirit stone cache ×${richness}.`);
+};
+
+// Pills are swallowed when the situation calls for it, never on a schedule.
+const considerPills = (run: RunState, messages: string[]) => {
+  if (run.hp / run.maxHp < 0.35 && run.pills.hp > 0) {
+    const heal = Math.round(run.maxHp * 0.4);
+    run.pills.hp -= 1;
+    run.pillsUsed.hp += 1;
+    run.hp = Math.min(run.maxHp, run.hp + heal);
+    messages.push(`Pill · blood-return swallowed at ${Math.round((run.hp / run.maxHp) * 100)}% · +${heal} HP.`);
+  }
+  if (run.pills.stat > 0) {
+    run.pills.stat -= 1;
+    run.pillsUsed.stat += 1;
+    run.statPointsGained += 1;
+    messages.push("Pill · marrow-forging swallowed · +1 stat point.");
+  }
+};
+
 const advanceRun = (current: RunState, profile: Profile): RunState => {
   if (current.outcome) return current;
   const next: RunState = {
@@ -369,8 +606,17 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
     openedChests: [...current.openedChests],
     monsters: current.monsters.map((monster) => ({ ...monster })),
     log: [...current.log],
+    equipped: { ...current.equipped },
+    skills: current.skills.map((skill) => ({ ...skill })),
+    pills: { ...current.pills },
+    pillsUsed: { ...current.pillsUsed },
+    learned: [...current.learned],
+    scrapped: [...current.scrapped],
+    found: [...current.found],
   };
   const messages: string[] = [];
+  const gear = equippedBonus(next.equipped);
+  const power = { atk: profile.atk + gear.atk, def: profile.def + gear.def, speed: profile.speed + gear.speed };
   const actingMonster = next.monsters
     .filter((monster) => monster.hp > 0)
     .sort((a, b) => a.nextTurn - b.nextTurn)[0];
@@ -398,10 +644,11 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
 
     if (actingMonster.alerted) {
       if (cellDistance(actingMonster.cell, next.hostCell, next.size) === 1) {
-        const guard = profile.def * 0.55 + profile.behaviours.caution * 0.025;
+        const guard = power.def * 0.55 + profile.behaviours.caution * 0.025 + skillPower(next, "run") * 0.9;
         const damage = Math.max(1, Math.round(actingMonster.atk - guard));
         next.hp = Math.max(0, next.hp - damage);
         messages.push(`${actingMonster.name} attacks on SPD ${actingMonster.speed} · ${damage} HP lost.`);
+        considerPills(next, messages);
       } else {
         const occupied = new Set(next.monsters.filter((monster) => monster.hp > 0 && monster.id !== actingMonster.id).map((monster) => monster.cell));
         const step = neighbours(actingMonster.cell, next.size)
@@ -428,6 +675,8 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
 
   if (decision.action === "search") {
     next.lastAction = "搜 Search";
+    const levelled = useSkill(next, "search");
+    if (levelled) messages.push(`察 Spirit Perception reaches Lv.${levelled} through use.`);
     const feature = next.features[next.hostCell];
     if (feature?.type === "key" && feature.key) {
       next.keys[feature.key] = true;
@@ -436,14 +685,18 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
       if (!next.keys[feature.key]) {
         messages.push(`搜 Search · locked ${feature.key} chest needs its matching key.`);
       } else {
-        const bonus = 1 + (profile.behaviours.greed >= 20 ? 1 : 0);
+        const bonus = 1 + (profile.behaviours.greed >= 20 ? 1 : 0) + skillPower(next, "search");
         next.openedChests.push(next.hostCell);
-        next.loot += bonus;
-        messages.push(`搜 Search · ${feature.key} key opens the locked chest · ${bonus} drop${bonus > 1 ? "s" : ""}.`);
+        messages.push(`搜 Search · ${feature.key} key opens the locked chest.`);
+        rollDrop(next, bonus, messages);
+        if (skillPower(next, "search") >= 2) rollDrop(next, 1, messages);
       }
     } else if (feature?.type === "sigil") {
       next.sigilCollected = true;
       messages.push(`搜 Search · ${floorSigil(next.dungeon)} secured.`);
+      // The sigil room always yields something, so a stealthy run still shows
+      // the host learning, equipping and stocking.
+      rollDrop(next, 1 + skillPower(next, "search"), messages);
     } else if (feature?.type === "exit") {
       if (next.sigilCollected) {
         next.outcome = "success";
@@ -463,14 +716,19 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
     if (!target) {
       messages.push("打 Hit · no monster in reach.");
     } else {
-      const damage = profile.atk + Math.floor(profile.behaviours.battle / 18);
+      const levelled = useSkill(next, "hit");
+      if (levelled) messages.push(`破 Cloudsplitter Rend reaches Lv.${levelled} through use.`);
+      const damage = power.atk + Math.floor(profile.behaviours.battle / 18) + skillPower(next, "hit") * 2;
       target.hp = Math.max(0, target.hp - damage);
       target.alerted = true;
       messages.push(`打 Hit · ${target.name} takes ${damage}.`);
       if (target.hp === 0) {
-        const drop = target.kind === "basic" ? 1 : target.kind === "elite" ? 2 : 4;
-        next.loot += drop;
-        messages.push(`${target.name} defeated · ${drop} drop${drop > 1 ? "s" : ""} secured.`);
+        const richness = target.kind === "basic" ? 1 : target.kind === "elite" ? 2 : 4;
+        const experience = target.kind === "basic" ? 38 : target.kind === "elite" ? 66 : 105;
+        next.kills += 1;
+        messages.push(`${target.name} defeated · +${experience} EXP.`);
+        gainExperience(next, experience, messages);
+        rollDrop(next, richness, messages);
       }
     }
   }
@@ -478,6 +736,8 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
   if (decision.action === "run") {
     next.lastAction = "跑 Run";
     actionCost = 70;
+    const levelled = useSkill(next, "run");
+    if (levelled) messages.push(`遁 Falling Petal Step reaches Lv.${levelled} through use.`);
     next.hostCell = runAway(next, objective);
     messages.push(`跑 Run · host breaks line to room ${rowOf(next.hostCell, next.size) + 1}-${columnOf(next.hostCell, next.size) + 1}.`);
   }
@@ -489,7 +749,8 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
   }
 
   if (!next.visited.includes(next.hostCell)) next.visited.push(next.hostCell);
-  next.hostNextTurn += actionCost / Math.max(1, profile.speed);
+  considerPills(next, messages);
+  next.hostNextTurn += actionCost / Math.max(1, power.speed);
   next.monsters.forEach((monster) => {
     if (monster.hp > 0 && !monster.alerted && hasSight(monster.cell, next.hostCell, next.size)) {
       monster.alerted = true;
@@ -498,6 +759,95 @@ const advanceRun = (current: RunState, profile: Profile): RunState => {
   });
   appendLog(next, messages);
   return next;
+};
+
+interface Settlement {
+  profile: Profile;
+  ledger: Array<{ label: string; amount: number; note: string }>;
+  closing: number;
+}
+
+// After the run the System does the host's accounting: sells what was outgrown,
+// restocks what the next floor needs, and writes down what it did not spend on.
+const settleRun = (profile: Profile, run: RunState, survived: boolean): Settlement => {
+  const ledger: Settlement["ledger"] = [];
+  let stones = profile.stones;
+
+  const cacheValue = run.loot * 6;
+  if (cacheValue > 0) {
+    stones += cacheValue;
+    ledger.push({ label: "Spirit stone caches", amount: cacheValue, note: `${run.loot} recovered underground` });
+  }
+
+  if (run.scrapped.length) {
+    // A failed run comes back light: the host drops half of what it was carrying.
+    const carried = survived ? run.scrapped : run.scrapped.slice(0, Math.floor(run.scrapped.length / 2));
+    const sold = carried.reduce((total, item) => total + item.value, 0);
+    if (sold > 0) {
+      stones += sold;
+      ledger.push({ label: "Sold outgrown equipment", amount: sold, note: carried.map((item) => item.name).join(", ") });
+    }
+    if (!survived && run.scrapped.length > carried.length) {
+      ledger.push({ label: "Lost on the way out", amount: 0, note: `${run.scrapped.length - carried.length} pieces left behind` });
+    }
+  }
+
+  const pills = { ...run.pills };
+  const restock = Math.max(0, PILL_STOCK_TARGET - pills.hp);
+  const restockCost = restock * PILL_VALUE.hp;
+  if (restock > 0 && stones >= restockCost) {
+    stones -= restockCost;
+    pills.hp += restock;
+    ledger.push({ label: "Bought blood-return pills", amount: -restockCost, note: `${restock} back to a stock of ${PILL_STOCK_TARGET}` });
+  } else if (restock > 0) {
+    ledger.push({ label: "Did not restock pills", amount: 0, note: `${restockCost} stones needed, ${stones} held` });
+  } else {
+    ledger.push({ label: "Did not restock pills", amount: 0, note: `${pills.hp} already carried` });
+  }
+
+  // Qi-gathering pills are swallowed on the way out rather than hoarded.
+  let hostExp = run.hostExp;
+  let hostLevel = run.hostLevel;
+  let statPoints = profile.statPoints + run.statPointsGained;
+  if (pills.exp > 0) {
+    const converted = pills.exp * 45;
+    hostExp += converted;
+    ledger.push({ label: "Swallowed qi-gathering pills", amount: 0, note: `${pills.exp} used for ${converted} EXP` });
+    pills.exp = 0;
+    while (hostExp >= expForLevel(hostLevel)) { hostExp -= expForLevel(hostLevel); hostLevel += 1; statPoints += 3; }
+  }
+
+  // What it deliberately passed on matters as much as what it bought.
+  const declined = run.scrapped.filter((item) => equipmentScore(item) <= equipmentScore(run.equipped[item.slot]));
+  if (declined.length) {
+    ledger.push({
+      label: "Did not equip",
+      amount: 0,
+      note: `${declined.map((item) => item.name).join(", ")} — scored below what the host already wore`,
+    });
+  }
+
+  const nextTier = 14 + (Math.floor(run.dungeon / 3) + 2) * 9;
+  if (stones < nextTier) {
+    ledger.push({ label: "Did not buy a better weapon", amount: 0, note: `${nextTier} stones asked, ${stones} held` });
+  } else {
+    ledger.push({ label: "Did not visit the smith", amount: 0, note: `${stones} stones held back for the next floor` });
+  }
+
+  return {
+    profile: {
+      ...profile,
+      hostLevel,
+      hostExp,
+      statPoints,
+      stones,
+      pills,
+      equipped: { ...run.equipped },
+      skills: run.skills.map((skill) => ({ ...skill })),
+    },
+    ledger,
+    closing: stones,
+  };
 };
 
 const featureResolved = (run: RunState, cell: number, feature: RoomFeature) => {
@@ -520,23 +870,11 @@ const featureLabel = (feature: RoomFeature, dungeon: number) => {
   return `${feature.key} ${feature.type}`;
 };
 
-const raiseExperience = (profile: Profile, amount: number): Profile => {
-  let hostExp = profile.hostExp + amount;
-  let hostLevel = profile.hostLevel;
-  let statPoints = profile.statPoints;
-  while (hostExp >= 100) {
-    hostExp -= 100;
-    hostLevel += 1;
-    statPoints += 3;
-  }
-  return { ...profile, hostExp, hostLevel, statPoints };
-};
-
 export function SystemGameDemo() {
   const [profile, setProfile] = useState<Profile>(freshProfile);
   const [tab, setTab] = useState<SystemTab>("stats");
   const [phase, setPhase] = useState<Phase>("idle");
-  const [run, setRun] = useState<RunState>(() => buildRun(1, 5));
+  const [run, setRun] = useState<RunState>(() => buildRun(freshProfile()));
   const [result, setResult] = useState<RunResult | null>(null);
   const [rewarded, setRewarded] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -556,9 +894,12 @@ export function SystemGameDemo() {
           ...base,
           ...parsed,
           behaviours: { ...base.behaviours, ...(parsed.behaviours ?? {}) },
+          equipped: { ...base.equipped, ...(parsed.equipped ?? {}) },
+          pills: { ...base.pills, ...(parsed.pills ?? {}) },
+          skills: Array.isArray(parsed.skills) ? parsed.skills : [],
         };
         setProfile(restored);
-        setRun(buildRun(restored.dungeon, restored.def));
+        setRun(buildRun(restored));
         setResumed(true);
       }
       if (savedScores) {
@@ -584,41 +925,50 @@ export function SystemGameDemo() {
 
   useEffect(() => {
     if (phase !== "running" || !run.outcome) return;
-    if (run.outcome === "success") {
+    const survived = run.outcome === "success";
+    const settled = settleRun(profile, run, survived);
+    const shared = {
+      ledger: settled.ledger,
+      closing: settled.closing,
+      kills: run.kills,
+      learned: run.learned,
+      pillsUsed: run.pillsUsed,
+    };
+
+    if (survived) {
       const points = 2 + Math.floor(run.dungeon / 3);
-      setProfile((current) => {
-        const progressed = raiseExperience(current, 28 + run.loot * 5);
-        return {
-          ...progressed,
-          systemPoints: progressed.systemPoints + points,
-          dungeon: run.dungeon + 1,
-          maxDungeon: Math.max(progressed.maxDungeon, run.dungeon),
-        };
+      setProfile({
+        ...settled.profile,
+        systemPoints: settled.profile.systemPoints + points,
+        dungeon: run.dungeon + 1,
+        maxDungeon: Math.max(settled.profile.maxDungeon, run.dungeon),
       });
       setResult({
+        ...shared,
         success: true,
         nearDeath: run.hp / run.maxHp < 0.25,
-        summary: `Level escaped · ${run.loot} drops recovered · System gained ${points} points.`,
+        summary: `Level escaped · ${run.kills} defeated · host is Lv.${settled.profile.hostLevel} · System gained ${points} points.`,
       });
       setPhase("review");
       return;
     }
 
     const lifespan = Math.max(0, profile.lifespan - 1);
-    setProfile((current) => ({
-      ...current,
+    setProfile({
+      ...settled.profile,
       lifespan,
-      obedience: Math.max(0, current.obedience - 4),
-    }));
+      obedience: Math.max(0, profile.obedience - 4),
+    });
     setResult({
+      ...shared,
       success: false,
       nearDeath: true,
       summary: run.outcome === "timeout"
-        ? "Floor time expired. The host tried to escape, but one lifespan was lost."
-        : "The host fell. One lifespan was lost, but the System keeps the lesson.",
+        ? "The door never opened in time. The floor sealed with the host inside and one lifespan was lost."
+        : "The host fell in the dark. One lifespan was lost, but the System keeps the lesson.",
     });
     setPhase(lifespan === 0 ? "dead" : "review");
-  }, [phase, profile.lifespan, run.dungeon, run.hp, run.loot, run.maxHp, run.outcome]);
+  }, [phase, profile, run]);
 
   const unlocked = useMemo(
     () => [
@@ -630,13 +980,26 @@ export function SystemGameDemo() {
     [profile.systemLevel],
   );
   const timeLeft = Math.max(0, Math.ceil(run.timeLimit - run.elapsed));
+  // While a run is live the host's sheet is the run's working copy; between runs
+  // it is the saved profile. Same shape either way, so the panels never branch.
+  const live = phase === "running";
+  const sheet = {
+    hostLevel: live ? run.hostLevel : profile.hostLevel,
+    hostExp: live ? run.hostExp : profile.hostExp,
+    equipped: live ? run.equipped : profile.equipped,
+    skills: live ? run.skills : profile.skills,
+    pills: live ? run.pills : profile.pills,
+    stones: profile.stones,
+    statPoints: profile.statPoints + (live ? run.statPointsGained : 0),
+  };
+  const gear = equippedBonus(sheet.equipped);
 
   const startRun = () => {
     if (phase === "running" || phase === "dead") return;
     if (result?.nearDeath && !rewarded) {
       setProfile((current) => ({ ...current, obedience: Math.max(0, current.obedience - 3) }));
     }
-    setRun(buildRun(profile.dungeon, profile.def));
+    setRun(buildRun(profile));
     setResult(null);
     setRewarded(false);
     setReviewed(false);
@@ -709,7 +1072,7 @@ export function SystemGameDemo() {
   const newHost = () => {
     const fresh = freshProfile();
     setProfile(fresh);
-    setRun(buildRun(fresh.dungeon, fresh.def));
+    setRun(buildRun(fresh));
     setResult(null);
     setRewarded(false);
     setReviewed(false);
@@ -721,8 +1084,8 @@ export function SystemGameDemo() {
   return (
     <div className="system-game" data-phase={phase}>
       <div className="system-game-topbar">
-        <div><span>HOST</span><strong>Nameless Disciple · Lv.{profile.hostLevel}</strong></div>
-        <div className="host-exp"><span style={{ width: `${profile.hostExp}%` }} /><small>{profile.hostExp} / 100 EXP</small></div>
+        <div><span>HOST</span><strong>Nameless Disciple · Lv.{sheet.hostLevel}</strong></div>
+        <div className="host-exp"><span style={{ width: `${Math.min(100, (sheet.hostExp / expForLevel(sheet.hostLevel)) * 100)}%` }} /><small>{sheet.hostExp} / {expForLevel(sheet.hostLevel)} EXP</small></div>
         <div><span>SYSTEM</span><strong>Lv.{profile.systemLevel} · {profile.systemPoints} pts</strong></div>
         {resumed ? <small className="resume-note">Local run resumed</small> : null}
       </div>
@@ -739,10 +1102,11 @@ export function SystemGameDemo() {
           <div className="system-tab-content">
             {tab === "stats" ? (
               <>
-                <div className="stat-points"><span>Unspent points</span><strong>{profile.statPoints}</strong></div>
+                <div className="stat-points"><span>Unspent points</span><strong>{sheet.statPoints}</strong></div>
                 {(["atk", "def", "speed"] as const).map((stat) => (
                   <div className="host-stat" key={stat}>
-                    <span>{stat.toUpperCase()}</span><strong>{profile[stat]}</strong>
+                    <span>{stat.toUpperCase()}</span>
+                    <strong>{profile[stat] + gear[stat]}{gear[stat] ? <i className="stat-gear"> ({profile[stat]}+{gear[stat]})</i> : null}</strong>
                     <button type="button" aria-label={`Add one ${stat} point`} disabled={profile.statPoints <= 0 || phase === "running"} onClick={() => addStat(stat)}>+</button>
                   </div>
                 ))}
@@ -754,34 +1118,49 @@ export function SystemGameDemo() {
             ) : null}
             {tab === "equipment" ? (
               <div className="equipment-list">
-                {[
-                  ["Head", "Cloudveil Crown", "+2 DEF", "Rare · spirit shield"],
-                  ["Body", "Plain Dao Robe", "+4 DEF", "Common"],
-                  ["Shoes", "Windstep Boots", "+2 SPD", "Uncommon · dash"],
-                  ["Accessory", "Jade Breath Ring", "+8 HP", "Rare · recovery"],
-                  ["Weapon", "Ironwood Sword", "+5 ATK", "Uncommon"],
-                ].map(([slot, name, main, effect]) => (
-                  <article key={slot}><span>{slot}</span><strong>{name}</strong><small>{main} · {effect}</small></article>
-                ))}
+                {EQUIP_SLOTS.map((slot) => {
+                  const item = sheet.equipped[slot];
+                  return (
+                    <article key={slot}>
+                      <span>{SLOT_LABELS[slot]}</span>
+                      <strong>{item ? item.name : "Empty"}</strong>
+                      <small>
+                        {item
+                          ? `Tier ${item.tier} · ${[item.atk && `+${item.atk} ATK`, item.def && `+${item.def} DEF`, item.speed && `+${item.speed} SPD`].filter(Boolean).join(" · ")}`
+                          : "The host wears whatever it finds that scores higher"}
+                      </small>
+                    </article>
+                  );
+                })}
+                <p className="panel-foot">Auto-equipped mid-run. Replaced pieces are sold when the run settles.</p>
               </div>
             ) : null}
             {tab === "inventory" ? (
               <div className="inventory-grid">
-                {[
-                  ["Spirit stone", "×18"],
-                  ["Iron ore", "×7"],
-                  ["Spare robe", "×1"],
-                  ["Sword manual", "×1"],
-                  ["Healing pill", "×4"],
-                  ["Qi pill", "×2"],
-                ].map(([name, amount]) => <article key={name}><span>{amount}</span><strong>{name}</strong></article>)}
+                <article><span>×{sheet.stones}</span><strong>Spirit stones</strong></article>
+                {(Object.keys(PILL_LABELS) as PillKind[]).map((kind) => (
+                  <article key={kind}><span>×{sheet.pills[kind]}</span><strong>{PILL_LABELS[kind].name}</strong></article>
+                ))}
+                <p className="panel-foot">
+                  {PILL_LABELS.hp.detail}. {PILL_LABELS.stat.detail} on pickup. {PILL_LABELS.exp.detail}.
+                </p>
               </div>
             ) : null}
             {tab === "skills" ? (
               <div className="skill-list">
-                <article><span>Lv.3</span><div><strong>Cloudsplitter Slash</strong><small>Single target · metal</small></div></article>
-                <article><span>Lv.2</span><div><strong>Falling Petal Step</strong><small>Dodge · movement</small></div></article>
-                <article><span>Lv.1</span><div><strong>Ember Palm</strong><small>Area attack · fire</small></div></article>
+                {sheet.skills.length ? sheet.skills.map((skill) => {
+                  const meta = skillMeta(skill.id);
+                  return (
+                    <article key={skill.id}>
+                      <span>Lv.{skillLevel(skill.uses)}</span>
+                      <div>
+                        <strong>{meta.name}</strong>
+                        <small>{meta.detail}</small>
+                        <small>{skill.uses} uses · {usesForNextLevel(skill.uses)} for the next level</small>
+                      </div>
+                    </article>
+                  );
+                }) : <p className="panel-foot">No manuals found yet. The host reads any it finds and levels them by using them.</p>}
               </div>
             ) : null}
           </div>
@@ -861,6 +1240,28 @@ export function SystemGameDemo() {
           <div>
             <span>POST-RUN REVIEW</span><strong>{result.summary}</strong>
             <small>Your command changes future autonomous Search / Hit / Run decisions.</small>
+          </div>
+          <div className="run-ledger">
+            <p className="panel-kicker">What the host did with it</p>
+            <ul>
+              {result.ledger.map((line, index) => (
+                <li key={`${line.label}-${index}`}>
+                  <strong>{line.label}</strong>
+                  <span className={line.amount > 0 ? "gain" : line.amount < 0 ? "spend" : "flat"}>
+                    {line.amount === 0 ? "—" : `${line.amount > 0 ? "+" : ""}${line.amount}`}
+                  </span>
+                  <small>{line.note}</small>
+                </li>
+              ))}
+            </ul>
+            <p className="ledger-close">
+              <span>Closing purse</span><strong>{result.closing} spirit stones</strong>
+              <small>
+                {result.kills} defeated
+                {result.learned.length ? ` · learned ${result.learned.map((id) => skillMeta(id).name).join(", ")}` : " · no new manuals"}
+                {result.pillsUsed.hp || result.pillsUsed.stat ? ` · pills used: ${[result.pillsUsed.hp && `${result.pillsUsed.hp} blood-return`, result.pillsUsed.stat && `${result.pillsUsed.stat} marrow-forging`].filter(Boolean).join(", ")}` : " · no pills needed"}
+              </small>
+            </p>
           </div>
           <div className="review-actions">
             <button type="button" disabled={reviewed} onClick={() => trainHost("less-greed")}>Too greedy</button>

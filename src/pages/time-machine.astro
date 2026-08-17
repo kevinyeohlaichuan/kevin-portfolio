@@ -1,0 +1,124 @@
+---
+import { Image } from "astro:assets";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import desktopShot from "../assets/legacy-site-desktop.webp";
+import mobileShot from "../assets/legacy-site-mobile.webp";
+
+export const prerender = true;
+
+const LIVE_URL = "https://www.eternalamarisuniverse.com";
+
+// Captured 15 August 2026 from the site as served. See docs/legacy-site/.
+const carried = [
+  { section: "Shipped games", items: "To Infinity and Beyond (PC · itch.io), Nasi Lemak Survivors (Android)" },
+  { section: "In development", items: "The Waiter (PC · Unreal Engine 5)" },
+  { section: "Technical work", items: "Property Presentation Mini App (UE5 · Blueprint), Property Viewer — Web (Babylon.js · Node · PHP)" },
+  { section: "Contact", items: "spicymsgstudio@gmail.com, itch.io/kevin-d-eternal, X @spicymsgstudio" },
+];
+
+const changes = [
+  { then: "Solo indie game developer", now: "Full-stack developer who also ships games" },
+  { then: "Penang, Malaysia", now: "Kuala Lumpur, Malaysia" },
+  { then: "One static page on GitHub Pages", now: "Astro build with work, games and universe routes" },
+  { then: "Games first, technical work last", now: "Professional archviz leads, the universe opens underneath" },
+];
+---
+
+<Base
+  title="Time machine — the previous Eternal Amaris Universe"
+  description="The first public version of eternalamarisuniverse.com, captured before the rebuild. Still live at the original address."
+>
+  <main id="main">
+    <SiteHeader current="time-machine" />
+
+    <section class="page-head">
+      <p class="kicker"><span></span> Time machine · captured 15 August 2026</p>
+      <h1>The site before this one.</h1>
+      <p class="page-intro">
+        The first public version of <strong>eternalamarisuniverse.com</strong> — one static page
+        on GitHub Pages, presenting Kevin as a solo indie developer under Spicy MSG Studio.
+        It is <strong>still live at the original address</strong>, untouched.
+      </p>
+      <p class="time-machine-actions">
+        <a class="time-machine-visit" href={LIVE_URL} target="_blank" rel="noreferrer">
+          Visit the live original <span aria-hidden="true">↗</span>
+        </a>
+        <span class="time-machine-note">Opens www.eternalamarisuniverse.com in a new tab</span>
+      </p>
+    </section>
+
+    <section class="section time-machine-capture">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> As it was served</p>
+        <h2>Serif headings.<br />Dark plum. Cards.</h2>
+        <p>Full-page captures taken the day before the rebuild, at 1280px and 390px wide.</p>
+      </div>
+      <div class="capture-frames">
+        <figure class="capture-desktop">
+          <div class="capture-window">
+            <span class="capture-chrome" aria-hidden="true"><i></i><i></i><i></i></span>
+            <Image src={desktopShot} alt="The previous eternalamarisuniverse.com home page on desktop" loading="lazy" />
+          </div>
+          <figcaption>Desktop · 1280px</figcaption>
+        </figure>
+        <figure class="capture-mobile">
+          <div class="capture-window">
+            <Image src={mobileShot} alt="The previous eternalamarisuniverse.com home page on mobile" loading="lazy" />
+          </div>
+          <figcaption>Mobile · 390px</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> What it carried</p>
+        <h2>Everything that page held.</h2>
+      </div>
+      <dl class="legacy-contents">
+        {carried.map((row) => (
+          <div>
+            <dt>{row.section}</dt>
+            <dd>{row.items}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+
+    <section class="section">
+      <div class="section-heading compact">
+        <p class="kicker"><span></span> What changed</p>
+        <h2>Why it was replaced.</h2>
+        <p>
+          The rebuild widened the audience past players — employers and partners reading
+          professional archviz and full-stack work, with the games and the wider universe
+          alongside it. The old page could not carry that without becoming a different site.
+        </p>
+      </div>
+      <ul class="then-now">
+        {changes.map((row) => (
+          <li>
+            <span class="then-label">Then</span>
+            <span class="then-value">{row.then}</span>
+            <span class="now-arrow" aria-hidden="true">→</span>
+            <span class="now-label">Now</span>
+            <span class="now-value">{row.now}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="contact-section">
+      <p class="kicker"><span></span> Still there</p>
+      <h2>Go see the original.</h2>
+      <div class="contact-links">
+        <a href={LIVE_URL} target="_blank" rel="noreferrer">www.eternalamarisuniverse.com <span aria-hidden="true">↗</span></a>
+        <a href="/">Back to the current site <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <SiteFooter />
+  </main>
+</Base>

@@ -13,24 +13,30 @@ const work = (await getCollection("work")).sort(
 
 <Base
   title="Professional work — Kevin Yeoh"
-  description="Architectural-visualisation and full-stack projects: production 3D property experiences, asset pipelines and platform delivery."
+  description="Production archviz at GoProp: the showroom experience, the browser showcase and the platform that matches buyers to a home."
 >
   <main id="main">
     <SiteHeader current="work" />
 
     <section class="page-head">
       <p class="kicker"><span></span> Professional work</p>
-      <h1>Architectural visualisation,<br />built to be explored.</h1>
+      <h1>Three ways a project<br />gets shown.</h1>
       <p class="page-intro">
-        Production work at GoProp across immersive sales-gallery experiences,
-        browser-based project showcases and an AI-assisted property platform.
+        Production work at GoProp: the showroom experience buyers walk into, the
+        browser showcase they open from a link, and the platform that matches them
+        to a home. Same buildings, three very different delivery problems.
       </p>
     </section>
 
     <section class="section entry-list">
       {work.map((entry) => (
-        <article class="entry-row">
-          <p class="project-eyebrow">{entry.data.eyebrow}</p>
+        <article class="entry-row" data-status={entry.data.status}>
+          <p class="project-eyebrow">
+            {entry.data.eyebrow}
+            {entry.data.status !== "delivered" && (
+              <span class="status-badge">{entry.data.status === "in-progress" ? "In build" : "Planned"}</span>
+            )}
+          </p>
           <h2><a href={`/work/${entry.id}`}>{entry.data.title}</a></h2>
           <p class="project-summary">{entry.data.summary}</p>
           <p class="project-result">{entry.data.result}</p>

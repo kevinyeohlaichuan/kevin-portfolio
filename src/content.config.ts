@@ -20,6 +20,11 @@ const work = defineCollection({
     /** Headline outcome, e.g. "239.8 MB source model to 34.6 MB runtime". */
     result: z.string(),
     scope: z.array(z.string()),
+    /**
+     * Delivery state. Defaults to `delivered` so shipped entries need no change;
+     * anything else renders a badge and keeps unfinished work honestly labelled.
+     */
+    status: z.enum(["delivered", "in-progress", "planned"]).default("delivered"),
     liveUrl: z.string().url().optional(),
     /** Which in-page line-art demo to mount. No company iframes. */
     demo: z.enum(["gamuda", "platform"]).optional(),

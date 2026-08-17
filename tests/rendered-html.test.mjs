@@ -21,7 +21,7 @@ test("every route prerenders with a title, an h1 and its own description", async
     "games/", "games/i-got-a-system/", "games/nasi-lemak-survivors/",
     "games/the-waiter/", "games/to-infinity-and-beyond/",
     "universe/", "universe/eternal-amaris-universe/",
-    "about/", "card/",
+    "about/", "card/", "time-machine/",
   ];
 
   const descriptions = new Set();
@@ -240,9 +240,11 @@ test("the archviz dock is collapsible and units are pickable by type", async () 
   assert.match(scene, /view\.unitType === meta\.type/);
   assert.match(scene, /view\.selectedId === meta\.id/);
   assert.match(scene, /view\.unitType = null/);
-  assert.match(scene, /view\.hiddenTowers\.includes/);
-  assert.match(scene, /Hide \$\{tower\.id\}/);
-  assert.match(scene, /Show \$\{tower\.id\}/);
+  // Selecting a tower isolates it in the viewport; the button itself stays legible.
+  assert.match(scene, /view\.activeTower !== null && view\.activeTower !== meta\.tower/);
+  assert.match(scene, /Show only \$\{tower\.id\}/);
+  assert.match(scene, /activeTower === tower\.id \? "active" : ""/);
+  assert.doesNotMatch(scene, /hiddenTowers/);
   assert.doesNotMatch(scene, /typeWires/);
   assert.match(scene, /scene\.pick\(/);
   assert.match(scene, /pointerup/);
@@ -253,6 +255,94 @@ test("the archviz dock is collapsible and units are pickable by type", async () 
   assert.match(css, /width: min\(270px, 25%\)/);
   assert.match(css, /orientation: portrait/);
   assert.match(css, /\.property-chat \{[^}]*overflow-y: auto/);
+  assert.match(css, /\.tower-options button\.active \{/);
+  assert.doesNotMatch(css, /\.tower-options button\.hidden/);
+});
+
+test("the time machine points at the still-live original site", async () => {
+  const page = await html("time-machine/");
+  assert.match(page, /https:\/\/www\.eternalamarisuniverse\.com/);
+  assert.match(page, /Visit the live original/);
+  // The old captures ship optimised, not as the 1.2MB source PNGs.
+  assert.doesNotMatch(page, /legacy-site-desktop-2026-08-15\.png/);
+  const footer = await source("src/components/SiteFooter.astro");
+  assert.match(footer, /href="\/time-machine"/);
+});
+
+test("archviz stacks unit types in bands rather than alternating per floor", async () => {
+  const scene = await source("src/components/BabylonLineScene.tsx");
+  assert.match(scene, /stacking: \["Type/);
+  assert.match(scene, /bandSize/);
+  // The old checkerboard picked a layout by floor index modulo the list.
+  assert.doesNotMatch(scene, /UNIT_LAYOUTS\[floorIndex % UNIT_LAYOUTS\.length\]/);
+  assert.match(scene, /unitBands/);
+});
+
+test("nasi lemak hands every upgrade to the player instead of choosing", async () => {
+  const runtime = await source("src/components/GameCanvasRuntime.tsx");
+  assert.match(runtime, /buildUpgradeOptions/);
+  assert.match(runtime, /state\.paused = true/);
+  assert.match(runtime, /levelUpRef\.current\?\.\(state\.level, buildUpgradeOptions\(\)\)/);
+  // The old flow unlocked and upgraded on its own.
+  assert.doesNotMatch(runtime, /NASI LEMAK BERAPI UNLOCKED/);
+  const demo = await source("src/components/GameMicroDemo.tsx");
+  assert.match(demo, /upgrade-choice/);
+  assert.match(demo, /applyUpgrade/);
+});
+
+test("moving a platform restores its static body size and offset", async () => {
+  // refreshBody() resets width/height from the game object's 4x4 texture, which
+  // silently disabled collision for the rest of the climb.
+  const runtime = await source("src/components/GameCanvasRuntime.tsx");
+  const place = runtime.match(/const placePlatform[\s\S]*?\n {4}\};/)?.[0] ?? "";
+  assert.match(place, /setOffset\(0, 0\)/);
+  assert.match(place, /refreshBody\(\)/);
+  assert.match(place, /setSize\(platform\.width, 10\)/);
+  assert.ok(place.indexOf("setOffset") < place.indexOf("refreshBody"), "offset must be normalised before the sync");
+  assert.ok(place.indexOf("refreshBody") < place.indexOf("setSize"), "size must be restored after the sync");
+});
+
+test("the games accept held touch input and coarse-pointer targets", async () => {
+  const runtime = await source("src/components/GameCanvasRuntime.tsx");
+  assert.match(runtime, /readTouchDirection/);
+  assert.match(runtime, /input\.manager\.pointers/);
+  assert.match(runtime, /addPointer\(2\)/);
+  const css = await source("src/styles/global.css");
+  assert.match(css, /@media \(pointer: coarse\)/);
+});
+
+test("the system host runs itself: levels from kills, equips, learns and settles", async () => {
+  const game = await source("src/components/SystemGameDemo.tsx");
+  // Levels come from mobs, not only from reaching the exit.
+  assert.match(game, /gainExperience\(next, experience, messages\)/);
+  assert.match(game, /LEVEL UP · host reaches/);
+  // Drops are equipment, pills or manuals, all handled without the player.
+  assert.match(game, /Auto-equipped/);
+  assert.match(game, /Auto-learned/);
+  assert.match(game, /considerEquipment/);
+  assert.match(game, /considerPills/);
+  // Skills level through use.
+  assert.match(game, /const skillLevel = \(uses: number\)/);
+  assert.match(game, /reaches Lv\.\$\{levelled\} through use/);
+  // The run settles into a ledger of spending and non-spending.
+  assert.match(game, /const settleRun/);
+  assert.match(game, /Sold outgrown equipment/);
+  assert.match(game, /Did not restock pills/);
+  assert.match(game, /Did not buy a better weapon/);
+  // Standing on the open exit beats fleeing, or the host dies on its own doorstep.
+  assert.match(game, /const standingOn = run\.features\[run\.hostCell\]/);
+  const urgentIndex = game.indexOf("if (urgent && nearestThreatGap");
+  assert.ok(game.indexOf("const standingOn") < urgentIndex, "the exit check must precede the threat response");
+  // The panels show real state, not the old hardcoded props.
+  assert.doesNotMatch(game, /Cloudveil Crown|Windstep Boots|Ember Palm|Iron ore/);
+});
+
+test("the click-to-start gate fills the stage instead of collapsing to zero height", async () => {
+  // The stage sets only min-height at desktop width, so height:100% here resolves
+  // against auto and the start button becomes invisible and unclickable.
+  const css = await source("src/styles/global.css");
+  assert.match(css, /\.game-start-shell \{ position: absolute; inset: 0; \}/);
+  assert.doesNotMatch(css, /\.game-start-shell \{[^}]*height: 100%/);
 });
 
 test("the system demo preserves autonomous progression around search, hit and run", async () => {
@@ -288,8 +378,10 @@ test("the system demo preserves autonomous progression around search, hit and ru
 
 test("the games showcase stays open-ended and separates mobile surfaces", async () => {
   const home = await source("src/pages/index.astro");
-  assert.match(home, /Playable worlds/);
+  // The homepage section must not hard-code how many games exist — that is the
+  // open-ended part. Pinning the exact headline here only blocks copy edits.
   assert.doesNotMatch(home, /Three games/);
+  assert.match(home, /<h2>[^<]+<br \/>[^<]+<\/h2>/, "the games section still needs a two-line headline");
 
   const css = await source("src/styles/global.css");
   assert.match(css, /\.game-showcase \{ display: flex; flex-direction: column; gap: 12px/);

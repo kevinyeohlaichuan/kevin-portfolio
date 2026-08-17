@@ -12,6 +12,9 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.js";
 import { CreateGreasedLine } from "@babylonjs/core/Meshes/Builders/greasedLineBuilder.js";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
+// Side-effect import: augments AbstractMesh with renderOutline, which is what
+// makes a picked unit unmistakable inside a field of identical wireframes.
+import "@babylonjs/core/Rendering/outlineRenderer.js";
 import { Scene } from "@babylonjs/core/scene.js";
 import { useEffect, useRef, useState } from "react";
 
@@ -36,7 +39,8 @@ interface ProjectPick {
   note: string;
 }
 interface SceneControls {
-  setFilters: (hiddenTowers: TowerFilter[], unitType: UnitType | null, selectedId: string) => void;
+  // activeTower isolates one tower in the viewport; null shows the whole masterplan.
+  setFilters: (activeTower: TowerFilter | null, unitType: UnitType | null, selectedId: string) => void;
   setMaxFloor: (floor: number) => void;
   showMatches: (projects: string[]) => void;
   resetCamera: () => void;
@@ -116,7 +120,7 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
   });
   const [status, setStatus] = useState(mode === "gamuda" ? "Drag to orbit · tap a unit" : "Drag to explore · tap a development");
   const [panelOpen, setPanelOpen] = useState(true);
-  const [hiddenTowers, setHiddenTowers] = useState<TowerFilter[]>([]);
+  const [activeTower, setActiveTower] = useState<TowerFilter | null>(null);
   const [selectedUnitType, setSelectedUnitType] = useState<UnitType | null>(null);
   const [maxFloor, setMaxFloor] = useState(25);
   const [selectedUnit, setSelectedUnit] = useState<UnitPick | null>(null);
@@ -160,10 +164,11 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     const unitMeshes: Mesh[] = [];
     const projectMeshes = new Map<string, Mesh[]>();
     const view = {
-      hiddenTowers: [] as TowerFilter[],
+      activeTower: null as TowerFilter | null,
       unitType: null as UnitType | null,
       maxFloor: 25,
       selectedId: "",
+      hoveredId: "",
       matches: [] as string[],
     };
     const makeWireMaterial = (name: string, color: Color3, alpha = 0.72) => {
@@ -179,11 +184,17 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       return material;
     };
     const colorless = makeWireMaterial(`colorless-${mode}`, ink, 0.72);
+    // Once anything is selected or filtered, everything else has to drop far
+    // enough back to read as context. At 0.72 a single bright unit among forty
+    // identical ones is invisible, which is what made picking look broken.
+    const recessive = makeWireMaterial(`recessive-${mode}`, ink, 0.11);
+    const hoverWire = makeWireMaterial(`hover-${mode}`, ink, 1);
     const typeBright: Record<UnitType, StandardMaterial> = {
       "Type A": makeWireMaterial(`type-a-hot-${mode}`, violet, 1),
       "Type B": makeWireMaterial(`type-b-hot-${mode}`, jade, 1),
       "Type C": makeWireMaterial(`type-c-hot-${mode}`, peach, 1),
     };
+    const typeColors: Record<UnitType, Color3> = { "Type A": violet, "Type B": jade, "Type C": peach };
     const matchWire = makeWireMaterial(`match-${mode}`, jade, 0.9);
     const pickWire = makeWireMaterial(`pick-${mode}`, violet, 1);
     const makeRoute = (name: string, points: Vector3[], color: Color3, dashed = true, width = 0.07) => {
@@ -202,40 +213,69 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       }
     };
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Selecting a unit is exclusive: it clears any unit-type highlight and is the
+    // only thing lit. Hover is the weaker signal that says "this is clickable".
     const paintGamuda = () => {
       unitMeshes.forEach((mesh) => {
         const meta = mesh.metadata as UnitPick;
-        const towerHidden = view.hiddenTowers.includes(meta.tower as TowerFilter);
+        const towerHidden = view.activeTower !== null && view.activeTower !== meta.tower;
         const floorHidden = meta.floor > view.maxFloor;
         mesh.isVisible = !towerHidden && !floorHidden;
+        mesh.renderOutline = false;
         if (!mesh.isVisible) return;
-        if (view.selectedId) mesh.material = view.selectedId === meta.id ? typeBright[meta.type] : colorless;
-        else if (view.unitType === meta.type) mesh.material = typeBright[meta.type];
-        else mesh.material = colorless;
+        if (view.selectedId) {
+          const isSelected = view.selectedId === meta.id;
+          mesh.material = isSelected ? typeBright[meta.type] : recessive;
+          if (isSelected) {
+            mesh.renderOutline = true;
+            mesh.outlineColor = typeColors[meta.type];
+            mesh.outlineWidth = 0.045;
+          }
+          return;
+        }
+        if (view.unitType) {
+          mesh.material = view.unitType === meta.type ? typeBright[meta.type] : recessive;
+          return;
+        }
+        mesh.material = view.hoveredId === meta.id ? hoverWire : colorless;
       });
     };
     const paintPlatform = () => {
       projectMeshes.forEach((meshes, label) => {
         const selected = view.selectedId === label;
         const matched = view.matches.includes(label);
+        const hovered = view.hoveredId === label;
         meshes.forEach((mesh) => {
-          if (selected) mesh.material = pickWire;
-          else if (matched) mesh.material = matchWire;
-          else mesh.material = colorless;
+          mesh.renderOutline = false;
+          if (selected) {
+            mesh.material = pickWire;
+            mesh.renderOutline = true;
+            mesh.outlineColor = violet;
+            mesh.outlineWidth = 0.045;
+            return;
+          }
+          if (view.selectedId) { mesh.material = matched ? matchWire : recessive; return; }
+          if (matched) { mesh.material = matchWire; return; }
+          if (view.matches.length) { mesh.material = recessive; return; }
+          mesh.material = hovered ? hoverWire : colorless;
         });
       });
     };
     const paint = () => { if (mode === "gamuda") paintGamuda(); else paintPlatform(); };
 
     if (mode === "gamuda") {
+      // Real towers stack a layout over a run of floors rather than alternating
+      // per floor, so each tower carries its own bottom-up band order.
       const footprints = [
-        { id: "Tower 1", x: -2.35, z: 0.1, floors: 13, width: 2.7, depth: 2.0 },
-        { id: "Tower 2", x: 0, z: -0.35, floors: 18, width: 2.45, depth: 2.05 },
-        { id: "Tower 3", x: 2.2, z: 0.25, floors: 15, width: 2.55, depth: 2.0 },
+        { id: "Tower 1", x: -2.35, z: 0.1, floors: 13, width: 2.7, depth: 2.0, stacking: ["Type A", "Type B", "Type C"] },
+        { id: "Tower 2", x: 0, z: -0.35, floors: 18, width: 2.45, depth: 2.05, stacking: ["Type B", "Type A", "Type C"] },
+        { id: "Tower 3", x: 2.2, z: 0.25, floors: 15, width: 2.55, depth: 2.0, stacking: ["Type A", "Type C", "Type B"] },
       ] as const;
       footprints.forEach((tower) => {
+        const bandSize = Math.ceil(tower.floors / tower.stacking.length);
         for (let floorIndex = 0; floorIndex < tower.floors; floorIndex += 1) {
-          const layout = UNIT_LAYOUTS[floorIndex % UNIT_LAYOUTS.length];
+          const bandType = tower.stacking[Math.min(Math.floor(floorIndex / bandSize), tower.stacking.length - 1)];
+          const layout = UNIT_LAYOUTS.find((item) => item.type === bandType) ?? UNIT_LAYOUTS[0];
           const mesh = CreateBox(`${tower.id}-${floorIndex + 1}`, {
             width: tower.width, depth: tower.depth, height: 0.42,
           }, scene);
@@ -255,6 +295,10 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
         }
       });
       makeRoute("gamuda-transit", [new Vector3(-7, 0.08, 4), new Vector3(-4, 0.08, 1.5), new Vector3(-1, 0.08, 3.2), new Vector3(2.2, 0.08, 1.2), new Vector3(7, 0.08, 3.5)], jade, true, 0.09);
+      // Bottom-up type sequence per tower, so the banding is inspectable.
+      viewport.dataset.unitBands = footprints
+        .map((tower) => `${tower.id}=${unitMeshes.filter((mesh) => (mesh.metadata as UnitPick).tower === tower.id).map((mesh) => (mesh.metadata as UnitPick).type.replace("Type ", "")).join("")}`)
+        .join(",");
     } else {
       const city = [
         [-4.3, -2.2, 5, 1.4, 1.2], [-2.2, 1.5, 8, 1.7, 1.5], [0, -1.5, 12, 2.0, 1.8],
@@ -284,8 +328,8 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     }
 
     controlsRef.current = {
-      setFilters: (nextHiddenTowers, unitType, selectedId) => {
-        view.hiddenTowers = nextHiddenTowers;
+      setFilters: (nextActiveTower, unitType, selectedId) => {
+        view.activeTower = nextActiveTower;
         view.unitType = unitType;
         view.selectedId = selectedId;
         paint();
@@ -310,16 +354,20 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     };
 
     let pointerStart = { x: 0, y: 0 };
-    const pickFromEvent = (event: PointerEvent) => {
+    const pickAt = (event: PointerEvent) => {
       const bounds = canvas.getBoundingClientRect();
-      if (bounds.width < 2 || bounds.height < 2) return;
-      const pick = scene.pick(
+      if (bounds.width < 2 || bounds.height < 2) return null;
+      return scene.pick(
         (event.clientX - bounds.left) * (canvas.width / bounds.width),
         (event.clientY - bounds.top) * (canvas.height / bounds.height),
         (candidate) => mode === "gamuda"
           ? candidate.isVisible && unitMeshes.includes(candidate as Mesh)
           : projectMeshes.get(String(candidate.metadata?.id ?? ""))?.includes(candidate as Mesh) === true,
       );
+    };
+    const pickFromEvent = (event: PointerEvent) => {
+      const pick = pickAt(event);
+      if (!pick) return;
       const mesh = pick.pickedMesh as Mesh | null;
       if (!pick.hit || !mesh?.metadata) return;
       if (mode === "gamuda") {
@@ -346,12 +394,39 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     const handlePointerDown = (event: PointerEvent) => {
       pointerStart = { x: event.clientX, y: event.clientY };
     };
+    // A tap drifts further than a mouse click, so allow more slack on touch.
     const handlePointerUp = (event: PointerEvent) => {
-      if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 6) return;
+      const slack = event.pointerType === "touch" ? 14 : 6;
+      if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > slack) return;
       pickFromEvent(event);
+    };
+    // Hover is throttled and only repaints when the target actually changes;
+    // without it nothing in the viewport looks clickable.
+    let lastHoverAt = 0;
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      const now = performance.now();
+      if (now - lastHoverAt < 60) return;
+      lastHoverAt = now;
+      const pick = pickAt(event);
+      const mesh = pick?.pickedMesh as Mesh | null;
+      const meta = mesh?.metadata as { id?: string } | undefined;
+      const nextHovered = pick?.hit && meta?.id ? String(meta.id) : "";
+      canvas.style.cursor = nextHovered ? "pointer" : "";
+      if (nextHovered === view.hoveredId) return;
+      view.hoveredId = nextHovered;
+      paint();
+    };
+    const handlePointerLeave = () => {
+      canvas.style.cursor = "";
+      if (!view.hoveredId) return;
+      view.hoveredId = "";
+      paint();
     };
     canvas.addEventListener("pointerdown", handlePointerDown);
     canvas.addEventListener("pointerup", handlePointerUp);
+    canvas.addEventListener("pointermove", handlePointerMove);
+    canvas.addEventListener("pointerleave", handlePointerLeave);
     scene.onPointerObservable.add((pointerInfo) => {
       if (pointerInfo.type !== PointerEventTypes.POINTERPICK) return;
       const event = pointerInfo.event as PointerEvent | undefined;
@@ -380,6 +455,8 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
       controlsRef.current = { setFilters: () => {}, setMaxFloor: () => {}, showMatches: () => {}, resetCamera: () => {} };
       canvas.removeEventListener("pointerdown", handlePointerDown);
       canvas.removeEventListener("pointerup", handlePointerUp);
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerleave", handlePointerLeave);
       window.removeEventListener("resize", onWinResize);
       window.cancelAnimationFrame(raf);
       observer.disconnect();
@@ -391,21 +468,20 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
 
   const floorMin = 8;
   const floorMax = 25;
+  // Selecting a tower isolates it in the viewport; selecting it again restores the masterplan.
   const chooseTower = (tower: TowerFilter) => {
-    const hiding = !hiddenTowers.includes(tower);
-    const nextHiddenTowers = hiding
-      ? [...hiddenTowers, tower]
-      : hiddenTowers.filter((item) => item !== tower);
-    const hidesSelection = hiding && selectedUnit?.tower === tower;
-    setHiddenTowers(nextHiddenTowers);
+    const nextActiveTower = activeTower === tower ? null : tower;
+    const hidesSelection = nextActiveTower !== null && selectedUnit !== null && selectedUnit.tower !== nextActiveTower;
+    setActiveTower(nextActiveTower);
     if (hidesSelection) setSelectedUnit(null);
-    controlsRef.current.setFilters(nextHiddenTowers, selectedUnitType, hidesSelection ? "" : selectedUnit?.id ?? "");
+    controlsRef.current.setFilters(nextActiveTower, selectedUnitType, hidesSelection ? "" : selectedUnit?.id ?? "");
+    setStatus(nextActiveTower ? `${nextActiveTower} isolated · tap it again for all towers` : "All towers visible · tap a unit");
   };
   const chooseUnitType = (unitType: UnitType) => {
     const nextType = selectedUnitType === unitType ? null : unitType;
     setSelectedUnitType(nextType);
     setSelectedUnit(null);
-    controlsRef.current.setFilters(hiddenTowers, nextType, "");
+    controlsRef.current.setFilters(activeTower, nextType, "");
   };
   const chooseMaxFloor = (floor: number) => {
     setMaxFloor(floor);
@@ -425,11 +501,12 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
   const resetView = () => {
     setSelectedUnit(null);
     setSelectedProject(null);
-    setHiddenTowers([]);
+    setActiveTower(null);
     setSelectedUnitType(null);
     setMaxFloor(25);
-    controlsRef.current.setFilters([], null, "");
+    controlsRef.current.setFilters(null, null, "");
     controlsRef.current.resetCamera();
+    setStatus("Drag to orbit · tap a unit");
   };
   const selectedProjects = chatResult ? PLATFORM_PROJECTS.filter((project) => chatResult.matches.includes(project.id)) : [];
   const unitCode = selectedUnit ? `${selectedUnit.tower.slice(-1)}-${String(selectedUnit.floor).padStart(2, "0")}-${selectedUnit.stack}` : null;
@@ -471,9 +548,9 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
                   {TOWERS.map((tower) => (
                     <button
                       type="button"
-                      aria-label={hiddenTowers.includes(tower.id) ? `Show ${tower.id}` : `Hide ${tower.id}`}
-                      aria-pressed={hiddenTowers.includes(tower.id)}
-                      className={hiddenTowers.includes(tower.id) ? "hidden" : ""}
+                      aria-label={activeTower === tower.id ? `Show all towers` : `Show only ${tower.id}`}
+                      aria-pressed={activeTower === tower.id}
+                      className={activeTower === tower.id ? "active" : ""}
                       onClick={() => chooseTower(tower.id)}
                       key={tower.id}
                     >
@@ -482,8 +559,8 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
                   ))}
                 </div>
                 <p>
-                  <strong>{TOWERS.length - hiddenTowers.length} towers visible</strong>
-                  <span>Tap a number to hide or show that tower</span>
+                  <strong>{activeTower ? `${activeTower} only` : "All towers visible"}</strong>
+                  <span>{activeTower ? "Tap it again to bring the others back" : "Tap a number to show that tower on its own"}</span>
                 </p>
                 <label className="floor-slider">
                   <span>Floor visibility · {String(maxFloor).padStart(2, "0")}</span>
