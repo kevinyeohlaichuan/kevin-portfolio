@@ -13,7 +13,7 @@ than an anchor on a single page.
   application later.
 - **React 19** for interactive islands only. Islands are framework-agnostic:
   a component can be swapped to another framework without touching the site.
-- **Content collections** with Zod schemas for case studies, games and universe
+- **Content collections** with Zod schemas for work projects, games and universe
   entries. Adding an entry means adding a file, never editing a page.
 - **Babylon.js** for the 3D line scenes, **Phaser** for playable game vignettes,
   **GSAP** for motion.
@@ -48,13 +48,8 @@ tests/           runtime assertions against dist/
 
 ## What's on the page
 
-- **Asset-budget visualiser** (`MeshBudget.tsx`) — a wireframe tower whose
-  lattice really decimates as you drag. Triangle count and payload are derived
-  from the Gamuda SS15 numbers (239.8 MB source, 34.6 MB shipped), so the
-  fidelity-versus-payload tradeoff is demonstrated instead of claimed.
-  Canvas 2D, no engine, no second WebGL context.
 - **Command palette** (`CommandPalette.tsx`) — `⌘K` or `/`. Ranked search over
-  every case study, game and universe entry, with arrow-key navigation and
+  every work project, game and universe entry, with arrow-key navigation and
   full listbox semantics.
 - **Pixel scene** (`PixelVigil.tsx`) — hand-authored sprites on a fixed
   14-colour palette, 128×80 buffer, integer upscaling, 12 fps step timer.
@@ -88,7 +83,7 @@ build rather than being discovered a year later.
 
 ## Content
 
-Case studies present an original in-page line-art demo and then link out to the
+Work projects present an original in-page line-art demo and then link out to the
 live product. Company products are never embedded in an iframe.
 
 The universe is written here as the games are made — entries appear when a game

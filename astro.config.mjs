@@ -14,6 +14,9 @@ export default defineConfig({
   output: "server",
   adapter: cloudflare({
     imageService: "compile",
+    // Prerendering does not need a local inspector. Keeping it disabled also
+    // makes builds work in restricted CI/container environments.
+    inspectorPort: false,
   }),
   integrations: [react(), mdx(), sitemap()],
   vite: {
