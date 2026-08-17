@@ -4,17 +4,27 @@ status: "in-development"
 statusLabel: "Current WIP · Godot"
 platforms: ["PC"]
 engine: "Godot"
-summary: "A cultivation game where you are the System: set behavioural priorities, watch an autonomous host act, then review the result."
+summary: "An automatic turn-based cultivation game where the player is the System, teaching an autonomous host through every run."
 demo: "system"
 order: 3
 ---
 
-You are not the protagonist. You are the System bolted onto one — issuing
-priorities and watching an autonomous host interpret them, succeed, fail,
-and occasionally do something you did not intend.
+You are not the protagonist. You are the System attached to one. Set up the
+host, start a dungeon level, and watch the turn-based run play automatically.
 
-The loop is: set a priority (搜 seek, 打 engage, 割 harvest), let the host
-run, then read what actually happened and adjust. The interesting design
-space is the gap between what you asked for and what the host did.
+Each level uses a small or large checkerboard formation with procedural
+chests, basic enemies, elites and bosses. Enemies can carry different elements,
+drop rates and attack styles. The host gains levels, experience, stats,
+equipment, inventory items and combat skills without a fixed level cap.
 
-Set in the [Eternal Amaris Universe](/universe).
+After every run, the player reviews the host: too greedy, too cautious, or not
+willing enough to fight. Those commands slowly form the host&rsquo;s behaviour.
+The System earns points for upgrades or rewards. Death reduces the host&rsquo;s
+lifespan, while repeated deaths or withheld rewards can reduce obedience until
+the host sometimes acts outside the player&rsquo;s intended pattern.
+
+Progress is stored locally so a run can resume on the same device. When a
+host&rsquo;s lifespan ends, the record keeps the host level, System level and
+highest dungeon reached.
+
+This is a private work in progress made with a small team.

@@ -2,7 +2,7 @@ import { glob } from "astro/loaders";
 import { defineCollection, z } from "astro:content";
 
 /**
- * Three collections, one shape each. Adding a case study, a game or a piece of
+ * Three collections, one shape each. Adding a work project, a game or a piece of
  * universe writing means adding a file — never editing a page.
  *
  * `universe` is deliberately flat. Entries carry a `kind` so factions,

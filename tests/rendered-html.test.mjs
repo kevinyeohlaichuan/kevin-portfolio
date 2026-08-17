@@ -20,7 +20,7 @@ test("every route prerenders with a title, an h1 and its own description", async
     "", "work/", "work/gamuda-ss15/", "work/goprop-platform/",
     "games/", "games/i-got-a-system/", "games/nasi-lemak-survivors/",
     "games/the-waiter/", "games/to-infinity-and-beyond/",
-    "universe/", "universe/eternal-amaris-universe/", "universe/the-system/",
+    "universe/", "universe/eternal-amaris-universe/",
     "about/", "card/",
   ];
 
@@ -109,7 +109,7 @@ test("content collections drive the routes", async () => {
   const games = await readdir(new URL("src/content/games", root));
   const universe = await readdir(new URL("src/content/universe", root));
 
-  assert.ok(work.length >= 2, "expected at least two case studies");
+  assert.ok(work.length >= 2, "expected at least two work projects");
   assert.ok(games.length >= 4, "expected at least four games");
   assert.ok(universe.length >= 1, "the universe needs somewhere to start");
 
@@ -203,17 +203,26 @@ test("the command palette is keyboard-first and content-driven", async () => {
   }
 });
 
-test("the mesh visualiser uses the real project numbers", async () => {
-  const mesh = await source("src/components/MeshBudget.tsx");
-  assert.match(mesh, /SOURCE_MB = 239\.8/);
-  assert.match(mesh, /SHIPPED_MB = 34\.6/);
+test("property discovery waits for the conversation before highlighting", async () => {
+  const scene = await source("src/components/BabylonLineScene.tsx");
+  assert.match(scene, /How may I assist you\?/);
+  assert.match(scene, /Retirement living/);
+  assert.match(scene, /Working adults/);
+  assert.match(scene, /Nearby amenities/);
+  assert.match(scene, /ROI potential/);
+  assert.match(scene, /showMatches\(\[\.\.\.result\.matches\]\)/);
+  assert.doesNotMatch(scene, /Run AI discovery preview/i);
+});
 
-  // Canvas 2D on purpose — no second WebGL context on the homepage.
-  // Checks real usage, not the word: the file's own comment says "WebGL".
-  assert.match(mesh, /getContext\("2d"\)/);
-  assert.doesNotMatch(mesh, /from "@babylonjs/);
-  assert.doesNotMatch(mesh, /getContext\(["']webgl/i);
-  assert.match(mesh, /prefers-reduced-motion/);
+test("the cultivation demo saves progression and learns from each run", async () => {
+  const game = await source("src/components/SystemGameDemo.tsx");
+  assert.match(game, /window\.localStorage/);
+  assert.match(game, /Lifespan/);
+  assert.match(game, /Obedience/);
+  assert.match(game, /Too greedy/);
+  assert.match(game, /Too cautious/);
+  assert.match(game, /Fight more/);
+  assert.match(game, /Upgrade system/);
 });
 
 test("pixel art is authored, not filtered", async () => {
