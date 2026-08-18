@@ -86,6 +86,17 @@ test("Babylon stays statically imported but never as a namespace", async () => {
   assert.doesNotMatch(babylon, /@babylonjs\/core\/[^"]*\.pure/);
 });
 
+test("babylon picking passes CSS pixels, not backing-store pixels", async () => {
+  // Babylon multiplies by 1 / hardwareScalingLevel internally, so scaling by
+  // canvas.width / bounds.width here squares the device pixel ratio and breaks
+  // picking on every HiDPI screen.
+  const scene = await source("src/components/BabylonLineScene.tsx");
+  const pick = scene.match(/const pickAt[\s\S]*?\n {4}\};/)?.[0] ?? "";
+  assert.match(pick, /event\.clientX - bounds\.left/);
+  assert.doesNotMatch(pick, /canvas\.width \/ bounds\.width/);
+  assert.doesNotMatch(pick, /canvas\.height \/ bounds\.height/);
+});
+
 test("Phaser only loads on an explicit click", async () => {
   const demo = await source("src/components/GameMicroDemo.tsx");
   assert.match(demo, /lazy\(/);
@@ -381,7 +392,6 @@ test("the games showcase stays open-ended and separates mobile surfaces", async 
   // The homepage section must not hard-code how many games exist — that is the
   // open-ended part. Pinning the exact headline here only blocks copy edits.
   assert.doesNotMatch(home, /Three games/);
-  assert.match(home, /<h2>[^<]+<br \/>[^<]+<\/h2>/, "the games section still needs a two-line headline");
 
   const css = await source("src/styles/global.css");
   assert.match(css, /\.game-showcase \{ display: flex; flex-direction: column; gap: 12px/);

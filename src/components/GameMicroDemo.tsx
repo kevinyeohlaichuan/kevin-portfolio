@@ -149,7 +149,7 @@ export function GameMicroDemo() {
           return <button type="button" role="tab" aria-selected={mode === key} className={mode === key ? "active" : ""} onClick={() => selectMode(key)} key={key}><span>{item.index}</span><small>{item.status}</small><strong>{item.title}</strong></button>;
         })}
       </div>
-      <div className="game-active-copy"><p>{active.description}</p>{active.href ? <a href={active.href} target="_blank" rel="noreferrer">Open full project ↗</a> : <span>Private development</span>}</div>
+      <div className="game-active-copy"><p>{active.description}</p>{active.href ? <a href={active.href} target="_blank" rel="noreferrer">Open full project ↗</a> : <span>Under construction</span>}</div>
     </div>
   );
 }

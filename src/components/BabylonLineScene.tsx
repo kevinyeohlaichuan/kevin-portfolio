@@ -357,9 +357,13 @@ export function BabylonLineScene({ mode }: BabylonLineSceneProps) {
     const pickAt = (event: PointerEvent) => {
       const bounds = canvas.getBoundingClientRect();
       if (bounds.width < 2 || bounds.height < 2) return null;
+      // scene.pick expects CSS pixels relative to the canvas. Babylon multiplies by
+      // 1 / hardwareScalingLevel internally (ray.core.js CreatePickingRayToRef), so
+      // converting to backing-store pixels here squares the device pixel ratio and
+      // breaks picking on every HiDPI screen.
       return scene.pick(
-        (event.clientX - bounds.left) * (canvas.width / bounds.width),
-        (event.clientY - bounds.top) * (canvas.height / bounds.height),
+        event.clientX - bounds.left,
+        event.clientY - bounds.top,
         (candidate) => mode === "gamuda"
           ? candidate.isVisible && unitMeshes.includes(candidate as Mesh)
           : projectMeshes.get(String(candidate.metadata?.id ?? ""))?.includes(candidate as Mesh) === true,
