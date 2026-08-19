@@ -15,7 +15,7 @@ const { current } = Astro.props;
   </nav>
   <div class="header-actions">
     {current && <a class="header-home" href="/"><span aria-hidden="true">←</span> Home</a>}
-    <a class="header-cta" href="mailto:spicymsgstudio@gmail.com">
+    <a class="header-cta" href="/contact" aria-current={current === "contact" ? "page" : undefined} data-astro-reload>
       Contact <span aria-hidden="true">↗</span>
     </a>
   </div>

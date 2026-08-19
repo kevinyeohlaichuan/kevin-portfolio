@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import test from "node:test";
+import { contactInputSchema } from "../src/lib/contact-schema.ts";
 
 const root = new URL("../", import.meta.url);
 const dist = new URL("dist/client/", root);
@@ -21,7 +22,7 @@ test("every route prerenders with a title, an h1 and its own description", async
     "games/", "games/i-got-a-system/", "games/nasi-lemak-survivors/",
     "games/the-waiter/", "games/to-infinity-and-beyond/",
     "universe/", "universe/eternal-amaris-universe/",
-    "about/", "card/", "time-machine/",
+    "about/", "contact/", "card/", "time-machine/",
   ];
 
   const descriptions = new Set();
@@ -121,6 +122,85 @@ test("no company product is embedded in an iframe", async () => {
   assert.ok(!existsSync(new URL("src/components/LiveProductFrame.tsx", root)));
 });
 
+test("contact is a validated Cloudflare-backed action with a mail fallback", async () => {
+  const page = await html("contact/");
+  assert.match(page, /data-contact-form/);
+  assert.match(page, /<form[^>]*method="post"/);
+  assert.match(page, /name="name"/);
+  assert.match(page, /name="email"/);
+  assert.match(page, /name="topic"/);
+  assert.match(page, /name="message"/);
+  assert.match(page, /name="website"/);
+  assert.match(page, /class="cf-turnstile"/);
+  assert.match(page, /data-action="contact"/);
+  assert.match(page, /The secure form needs JavaScript/);
+  assert.match(page, /mailto:spicymsgstudio@gmail\.com/);
+
+  const action = await source("src/actions/index.ts");
+  assert.match(action, /defineAction/);
+  assert.match(action, /accept: "form"/);
+  assert.match(action, /contactInputSchema/);
+  assert.match(action, /siteverify/);
+  assert.match(action, /result\.action === "contact"/);
+  assert.match(action, /hostnameAllowed/);
+  assert.match(action, /internal-error/);
+  assert.match(action, /invalid-input-secret/);
+  assert.match(action, /CONTACT_RATE_LIMITER/);
+  assert.match(action, /TOO_MANY_REQUESTS/);
+  assert.match(action, /new TextEncoder\(\)\.encode\(requester\)/);
+  assert.doesNotMatch(action, /context\.clientAddress/);
+  assert.match(action, /if \(input\.website\) return \{ delivered: true \}/);
+  assert.match(action, /CONTACT_EMAIL/);
+  assert.match(action, /replyTo/);
+
+  const configSource = await source("wrangler.jsonc");
+  const config = JSON.parse(configSource);
+  assert.equal(config.send_email[0].destination_address, "spicymsgstudio@gmail.com");
+  assert.ok(config.send_email[0].allowed_sender_addresses.length > 0);
+  assert.ok(config.ratelimits.length > 0);
+  assert.ok(config.secrets.required.includes("TURNSTILE_SECRET_KEY"));
+  assert.equal(config.vars.TURNSTILE_SECRET_KEY, undefined);
+  assert.doesNotMatch(configSource, /1x0000000000000000000000000000000AA/);
+  assert.doesNotMatch(config.vars.TURNSTILE_ALLOWED_HOSTNAMES, /\*|localhost|127\.0\.0\.1/);
+
+  const pageSource = await source("src/pages/contact.astro");
+  assert.doesNotMatch(pageSource, /status\.textContent = error\.message/);
+  assert.match(pageSource, /window\.turnstile\.render/);
+  assert.match(pageSource, /api\.js\?render=explicit/);
+  assert.match(pageSource, /container\.clientWidth < 300 \? "compact" : "flexible"/);
+  assert.match(pageSource, /astro:page-load/);
+  assert.match(pageSource, /resetTurnstile\(\)/);
+
+  const astroConfig = await source("astro.config.mjs");
+  assert.match(astroConfig, /actionBodySizeLimit: 32 \* 1024/);
+
+  const packageJson = JSON.parse(await source("package.json"));
+  assert.match(packageJson.scripts["deploy:check"], /validate-production-secret/);
+  for (const script of ["deploy:dry", "deploy:preview", "deploy"]) {
+    assert.match(packageJson.scripts[script], /--secrets-file \.env\.production/);
+  }
+
+  const deployValidator = await source("scripts/validate-deploy.mjs");
+  assert.match(deployValidator, /staging-kevin-portfolio/);
+});
+
+test("contact input accepts Astro's null representation for empty optional form fields", () => {
+  const input = contactInputSchema.parse({
+    name: "Ada Lovelace",
+    email: "ada@example.com",
+    topic: "collaboration",
+    message: "I would like to discuss an interactive project.",
+    website: null,
+    "cf-turnstile-response": null,
+  });
+
+  assert.equal(input.website, "");
+  assert.equal(input["cf-turnstile-response"], "");
+
+  assert.throws(() => contactInputSchema.parse({ ...input, email: "not-an-email" }));
+  assert.throws(() => contactInputSchema.parse({ ...input, message: "too short" }));
+});
+
 test("content collections drive the routes", async () => {
   const work = await readdir(new URL("src/content/work", root));
   const games = await readdir(new URL("src/content/games", root));
@@ -215,7 +295,7 @@ test("the command palette is keyboard-first and content-driven", async () => {
 
   // Every route reachable from the palette must be in the built output.
   const home = await html("");
-  for (const slug of ["/work", "/games", "/universe", "/about", "/card"]) {
+  for (const slug of ["/work", "/games", "/universe", "/about", "/contact", "/card"]) {
     assert.ok(home.includes(slug), `palette target ${slug} missing from page`);
   }
 });
@@ -270,10 +350,12 @@ test("the archviz dock is collapsible and units are pickable by type", async () 
   assert.doesNotMatch(css, /\.tower-options button\.hidden/);
 });
 
-test("the time machine points at the still-live original site", async () => {
+test("the time machine preserves the old site without a self-referential live link", async () => {
   const page = await html("time-machine/");
-  assert.match(page, /https:\/\/www\.eternalamarisuniverse\.com/);
-  assert.match(page, /Visit the live original/);
+  assert.match(page, /id="legacy-captures"/);
+  assert.match(page, /View the preserved captures/);
+  assert.doesNotMatch(page, /<a[^>]*href="https:\/\/(?:www\.)?eternalamarisuniverse\.com/);
+  assert.doesNotMatch(page, /<a[^>]*href="https:\/\/kevinyeohlaichuan\.github\.io/);
   // The old captures ship optimised, not as the 1.2MB source PNGs.
   assert.doesNotMatch(page, /legacy-site-desktop-2026-08-15\.png/);
   const footer = await source("src/components/SiteFooter.astro");

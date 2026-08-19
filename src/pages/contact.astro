@@ -1,0 +1,239 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+export const prerender = true;
+
+const TEST_SITE_KEY = "1x00000000000000000000AA";
+const configuredSiteKey = (env as unknown as { PUBLIC_TURNSTILE_SITE_KEY?: string })
+  .PUBLIC_TURNSTILE_SITE_KEY;
+const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_BEFORE_DEPLOY"
+  ? TEST_SITE_KEY
+  : configuredSiteKey;
+---
+
+<Base
+  title="Contact Kevin Yeoh — Full-stack developer"
+  description="Contact Kevin Yeoh about full-stack roles, architectural visualisation, interactive 3D work, game development, or media enquiries."
+>
+  <main id="main">
+    <SiteHeader current="contact" />
+
+    <section class="page-head contact-page-head">
+      <p class="kicker"><span></span> Direct to my inbox</p>
+      <h1>Let&rsquo;s talk.</h1>
+      <p class="page-intro">
+        Hiring, building something interactive, or covering a Spicy MSG Studio game?
+        Send the details below and I&rsquo;ll reply by email.
+      </p>
+    </section>
+
+    <section class="section contact-workspace" aria-labelledby="contact-form-title">
+      <div class="contact-form-copy">
+        <p class="kicker"><span></span> Contact</p>
+        <h2 id="contact-form-title">Start with the useful details.</h2>
+        <p>
+          Tell me what you are building, the role or help you need, and any timing I
+          should know. This form sends directly to my existing inbox.
+        </p>
+        <a href="mailto:spicymsgstudio@gmail.com">
+          Prefer email? spicymsgstudio@gmail.com <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <div class="contact-form-stack">
+        <noscript>
+          <style is:inline>.contact-form{display:none!important}</style>
+          <p class="contact-noscript">
+            The secure form needs JavaScript. Email
+            <a href="mailto:spicymsgstudio@gmail.com">spicymsgstudio@gmail.com</a>
+            instead.
+          </p>
+        </noscript>
+
+        <form class="contact-form" data-contact-form method="post" novalidate>
+        <div class="contact-field-row">
+          <label>
+            <span>Name</span>
+            <input name="name" type="text" autocomplete="name" minlength="2" maxlength="80" required />
+          </label>
+          <label>
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" maxlength="254" required />
+          </label>
+        </div>
+
+        <label>
+          <span>What is this about?</span>
+          <select name="topic" required>
+            <option value="">Choose one</option>
+            <option value="employment">Employment</option>
+            <option value="collaboration">Project collaboration</option>
+            <option value="press">Press and media</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Message</span>
+          <textarea
+            name="message"
+            rows="8"
+            minlength="20"
+            maxlength="5000"
+            placeholder="Scope, timing, links, and what a good outcome looks like."
+            required
+          ></textarea>
+        </label>
+
+        <label class="contact-honeypot" aria-hidden="true">
+          <span>Website</span>
+          <input name="website" type="text" tabindex="-1" autocomplete="off" />
+        </label>
+
+          <div
+            class="cf-turnstile"
+            data-turnstile-widget
+            data-sitekey={turnstileSiteKey}
+            data-action="contact"
+            data-theme="dark"
+            data-size="flexible"
+          ></div>
+
+        <div class="contact-submit-row">
+          <button type="submit">Send message <span aria-hidden="true">↗</span></button>
+          <p class="contact-status" data-contact-status role="status" aria-live="polite">
+            Protected by Cloudflare Turnstile.
+          </p>
+        </div>
+        </form>
+      </div>
+    </section>
+
+    <SiteFooter />
+  </main>
+
+  <script>
+    import { actions, isInputError } from "astro:actions";
+
+    let turnstileLoadPromise: Promise<void> | undefined;
+    let turnstileContainer: HTMLElement | null = null;
+    let turnstileWidgetId: string | undefined;
+
+    const loadTurnstile = () => {
+      if (window.turnstile) return Promise.resolve();
+      if (turnstileLoadPromise) return turnstileLoadPromise;
+
+      turnstileLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.dataset.turnstileScript = "true";
+        script.addEventListener("load", () => resolve(), { once: true });
+        script.addEventListener("error", () => {
+          turnstileLoadPromise = undefined;
+          reject(new Error("Turnstile failed to load"));
+        }, { once: true });
+        document.head.appendChild(script);
+      });
+
+      return turnstileLoadPromise;
+    };
+
+    const renderTurnstile = () => {
+      const container = document.querySelector<HTMLElement>("[data-turnstile-widget]");
+      if (!container || !window.turnstile || container === turnstileContainer) return;
+
+      const sitekey = container.dataset.sitekey;
+      if (!sitekey) return;
+
+      turnstileContainer = container;
+      turnstileWidgetId = window.turnstile.render(container, {
+        sitekey,
+        action: "contact",
+        theme: "dark",
+        size: container.clientWidth < 300 ? "compact" : "flexible",
+      });
+    };
+
+    const resetTurnstile = () => window.turnstile?.reset(turnstileWidgetId);
+
+    const actionErrorMessage = (code: string) => {
+      switch (code) {
+        case "BAD_REQUEST":
+          return "Verification failed or expired. Please try again.";
+        case "TOO_MANY_REQUESTS":
+          return "Too many messages were submitted. Please wait a minute and try again.";
+        case "SERVICE_UNAVAILABLE":
+          return "The contact service is temporarily unavailable. Please use the email link instead.";
+        default:
+          return "The message could not be sent. Please try again or use the email link.";
+      }
+    };
+
+    const initialiseContactForm = () => {
+      const form = document.querySelector<HTMLFormElement>("[data-contact-form]");
+      const status = document.querySelector<HTMLElement>("[data-contact-status]");
+      const button = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+      if (!form || !status || !button || form.dataset.bound === "true") return;
+      form.dataset.bound = "true";
+
+      void loadTurnstile()
+        .then(renderTurnstile)
+        .catch(() => {
+          status.dataset.state = "error";
+          status.textContent = "Verification could not load. Please refresh or use the email link.";
+        });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (!form.reportValidity()) return;
+
+        button.disabled = true;
+        status.dataset.state = "sending";
+        status.textContent = "Sending…";
+
+        try {
+          const { error } = await actions.submitContact(new FormData(form));
+
+          if (error) {
+            status.dataset.state = "error";
+            status.textContent = isInputError(error)
+              ? "Check the fields and complete the verification."
+              : actionErrorMessage(error.code);
+            resetTurnstile();
+            return;
+          }
+
+          form.reset();
+          resetTurnstile();
+          status.dataset.state = "success";
+          status.textContent = "Message sent. I’ll reply by email.";
+        } catch {
+          resetTurnstile();
+          status.dataset.state = "error";
+          status.textContent = "The contact service could not be reached. Please try again or use the email link.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+    };
+
+    initialiseContactForm();
+    document.addEventListener("astro:page-load", initialiseContactForm);
+    document.addEventListener("astro:before-swap", () => {
+      if (turnstileWidgetId) window.turnstile?.remove(turnstileWidgetId);
+      if (!window.turnstile) {
+        document.querySelector("script[data-turnstile-script]")?.remove();
+        turnstileLoadPromise = undefined;
+      }
+      turnstileContainer = null;
+      turnstileWidgetId = undefined;
+    });
+  </script>
+</Base>

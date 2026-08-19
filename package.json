@@ -8,11 +8,17 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
-    "start": "astro preview",
+    "preview": "npm run build && wrangler dev",
+    "start": "wrangler dev",
     "check": "astro check",
     "lint": "eslint . --ignore-pattern dist",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs"
+    "test": "npm run build && node --experimental-strip-types --test tests/rendered-html.test.mjs",
+    "cf:typegen": "wrangler types",
+    "deploy:check": "node scripts/validate-deploy.mjs && node scripts/validate-production-secret.mjs",
+    "deploy:dry": "npm run deploy:check && npm run build && wrangler deploy --dry-run --secrets-file .env.production",
+    "deploy:preview": "npm run deploy:check && npm run build && wrangler versions upload --preview-alias staging --secrets-file .env.production",
+    "deploy:promote": "wrangler versions deploy",
+    "deploy": "npm run deploy:check && npm run build && wrangler deploy --secrets-file .env.production"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.1",
@@ -43,7 +49,7 @@
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3",
-    "wrangler": "4.92.0"
+    "wrangler": "4.124.0"
   },
   "type": "module"
 }

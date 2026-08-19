@@ -12,6 +12,9 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   site: "https://eternalamarisuniverse.com",
   output: "server",
+  security: {
+    actionBodySizeLimit: 32 * 1024,
+  },
   adapter: cloudflare({
     imageService: "compile",
     // Prerendering does not need a local inspector. Keeping it disabled also
@@ -21,6 +24,9 @@ export default defineConfig({
   integrations: [react(), mdx(), sitemap()],
   vite: {
     plugins: [tailwindcss()],
+    resolve: {
+      dedupe: ["react", "react-dom"],
+    },
     // Phaser already owns its browser bundle. Vite's dev pre-bundler can
     // invalidate that cached chunk while this click-loaded island is idle.
     optimizeDeps: {

@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "kevin-portfolio",
+  "compatibility_date": "2026-08-18",
+  "workers_dev": true,
+  "preview_urls": true,
+  "secrets": {
+    "required": [
+      "TURNSTILE_SECRET_KEY"
+    ]
+  },
+  "send_email": [
+    {
+      "name": "CONTACT_EMAIL",
+      "destination_address": "spicymsgstudio@gmail.com",
+      "allowed_sender_addresses": [
+        "contact@eternalamarisuniverse.com"
+      ]
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "CONTACT_RATE_LIMITER",
+      "namespace_id": "7382641",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "CONTACT_FROM_EMAIL": "contact@eternalamarisuniverse.com",
+    "CONTACT_TO_EMAIL": "spicymsgstudio@gmail.com",
+    "PUBLIC_TURNSTILE_SITE_KEY": "REPLACE_BEFORE_DEPLOY",
+    "TURNSTILE_ALLOWED_HOSTNAMES": "eternalamarisuniverse.com,www.eternalamarisuniverse.com,REPLACE_WITH_WORKERS_HOST"
+  }
+}

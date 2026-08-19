@@ -8,8 +8,6 @@ import mobileShot from "../assets/legacy-site-mobile.webp";
 
 export const prerender = true;
 
-const LIVE_URL = "https://www.eternalamarisuniverse.com";
-
 // Captured 15 August 2026 from the site as served. See docs/legacy-site/.
 const carried = [
   { section: "Shipped games", items: "To Infinity and Beyond (PC · itch.io), Nasi Lemak Survivors (Android)" },
@@ -28,7 +26,7 @@ const changes = [
 
 <Base
   title="Time machine — the previous Eternal Amaris Universe"
-  description="The first public version of eternalamarisuniverse.com, captured before the rebuild. Still live at the original address."
+  description="The first public version of eternalamarisuniverse.com, captured and preserved here before the rebuild."
 >
   <main id="main">
     <SiteHeader current="time-machine" />
@@ -39,17 +37,17 @@ const changes = [
       <p class="page-intro">
         The first public version of <strong>eternalamarisuniverse.com</strong> — one static page
         on GitHub Pages, presenting Kevin as a solo indie developer under Spicy MSG Studio.
-        It is <strong>still live at the original address</strong>, untouched.
+        The captures below preserve it <strong>exactly as it was served</strong> before the domain cutover.
       </p>
       <p class="time-machine-actions">
-        <a class="time-machine-visit" href={LIVE_URL} target="_blank" rel="noreferrer">
-          Visit the live original <span aria-hidden="true">↗</span>
+        <a class="time-machine-visit" href="#legacy-captures">
+          View the preserved captures <span aria-hidden="true">↓</span>
         </a>
-        <span class="time-machine-note">Opens www.eternalamarisuniverse.com in a new tab</span>
+        <span class="time-machine-note">Archived here before the public switch</span>
       </p>
     </section>
 
-    <section class="section time-machine-capture">
+    <section class="section time-machine-capture" id="legacy-captures">
       <div class="section-heading compact">
         <p class="kicker"><span></span> As it was served</p>
         <h2>Serif headings.<br />Dark plum. Cards.</h2>
@@ -111,10 +109,10 @@ const changes = [
     </section>
 
     <section class="contact-section">
-      <p class="kicker"><span></span> Still there</p>
-      <h2>Go see the original.</h2>
+      <p class="kicker"><span></span> Preserved here</p>
+      <h2>The original stays in the record.</h2>
       <div class="contact-links">
-        <a href={LIVE_URL} target="_blank" rel="noreferrer">www.eternalamarisuniverse.com <span aria-hidden="true">↗</span></a>
+        <a href="#legacy-captures">View the captures <span aria-hidden="true">↑</span></a>
         <a href="/">Back to the current site <span aria-hidden="true">→</span></a>
       </div>
     </section>
