@@ -7,6 +7,9 @@ interface Window {
         sitekey: string;
         size: "compact" | "flexible";
         theme: "dark";
+        callback: (token: string) => void;
+        "expired-callback": () => void;
+        "error-callback": () => void;
       },
     ): string;
     remove(widgetId: string): void;

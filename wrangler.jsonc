@@ -1,37 +1,49 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "kevin-portfolio",
-  "compatibility_date": "2026-08-18",
-  "workers_dev": true,
-  "preview_urls": true,
-  "secrets": {
-    "required": [
-      "TURNSTILE_SECRET_KEY"
-    ]
-  },
-  "send_email": [
-    {
-      "name": "CONTACT_EMAIL",
-      "destination_address": "spicymsgstudio@gmail.com",
-      "allowed_sender_addresses": [
-        "contact@eternalamarisuniverse.com"
-      ]
-    }
-  ],
-  "ratelimits": [
-    {
-      "name": "CONTACT_RATE_LIMITER",
-      "namespace_id": "7382641",
-      "simple": {
-        "limit": 5,
-        "period": 60
-      }
-    }
-  ],
-  "vars": {
-    "CONTACT_FROM_EMAIL": "contact@eternalamarisuniverse.com",
-    "CONTACT_TO_EMAIL": "spicymsgstudio@gmail.com",
-    "PUBLIC_TURNSTILE_SITE_KEY": "REPLACE_BEFORE_DEPLOY",
-    "TURNSTILE_ALLOWED_HOSTNAMES": "eternalamarisuniverse.com,www.eternalamarisuniverse.com,REPLACE_WITH_WORKERS_HOST"
-  }
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "kevin-portfolio",
+	"main": "./src/worker.ts",
+	"account_id": "883e6d04bf2265413c6c68073cdc4adc",
+	"compatibility_date": "2026-08-18",
+	"workers_dev": true,
+	"preview_urls": true,
+	"assets": {
+		"binding": "ASSETS",
+		"run_worker_first": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "f2abdb6750944b7f95479c8f71d7805b"
+		}
+	],
+	"secrets": {
+		"required": [
+			"TURNSTILE_SECRET_KEY"
+		]
+	},
+	"send_email": [
+		{
+			"name": "CONTACT_EMAIL",
+			"destination_address": "spicymsgstudio@gmail.com",
+			"allowed_sender_addresses": [
+				"contact@eternalamarisuniverse.com"
+			]
+		}
+	],
+	"ratelimits": [
+		{
+			"name": "CONTACT_RATE_LIMITER",
+			"namespace_id": "7382641",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		}
+	],
+	"vars": {
+		"CONTACT_FROM_EMAIL": "contact@eternalamarisuniverse.com",
+		"CONTACT_TO_EMAIL": "spicymsgstudio@gmail.com",
+		"PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEVXQw_HdnxhCe4k",
+		"TURNSTILE_ALLOWED_HOSTNAMES": "eternalamarisuniverse.com,www.eternalamarisuniverse.com,kevin-portfolio.kevinyeohlaichuan5385.workers.dev,staging-kevin-portfolio.kevinyeohlaichuan5385.workers.dev"
+	}
 }

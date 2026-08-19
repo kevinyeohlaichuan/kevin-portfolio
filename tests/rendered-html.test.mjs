@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import test from "node:test";
 import { contactInputSchema } from "../src/lib/contact-schema.ts";
+import { redirectToCanonicalHost } from "../src/lib/canonical-host.ts";
 
 const root = new URL("../", import.meta.url);
 const dist = new URL("dist/client/", root);
@@ -122,6 +123,38 @@ test("no company product is embedded in an iframe", async () => {
   assert.ok(!existsSync(new URL("src/components/LiveProductFrame.tsx", root)));
 });
 
+test("www redirects to the canonical production host without changing path or query", () => {
+  const response = redirectToCanonicalHost(
+    new Request("http://www.eternalamarisuniverse.com:8787/work/gamuda-ss15/?view=full&mode=2"),
+  );
+
+  assert.ok(response);
+  assert.equal(response.status, 301);
+  assert.equal(
+    response.headers.get("location"),
+    "https://eternalamarisuniverse.com/work/gamuda-ss15/?view=full&mode=2",
+  );
+});
+
+test("canonical redirects do not affect the apex, Workers.dev or local development", () => {
+  for (const url of [
+    "https://eternalamarisuniverse.com/about/?from=canonical-test",
+    "https://kevin-portfolio.kevinyeohlaichuan5385.workers.dev/about/?from=worker-test",
+    "http://127.0.0.1:4321/about/?from=local-test",
+  ]) {
+    assert.equal(redirectToCanonicalHost(new Request(url)), undefined, `${url} should not redirect`);
+  }
+});
+
+test("the custom Worker redirects before delegating to Astro's Cloudflare handler", async () => {
+  const worker = await source("src/worker.ts");
+  const redirectIndex = worker.indexOf("redirectToCanonicalHost(request)");
+  const astroIndex = worker.indexOf("handle(request, env, context)");
+
+  assert.ok(redirectIndex >= 0, "custom Worker does not evaluate the canonical redirect");
+  assert.ok(astroIndex > redirectIndex, "Astro handles the request before the canonical redirect");
+});
+
 test("contact is a validated Cloudflare-backed action with a mail fallback", async () => {
   const page = await html("contact/");
   assert.match(page, /data-contact-form/);
@@ -133,6 +166,12 @@ test("contact is a validated Cloudflare-backed action with a mail fallback", asy
   assert.match(page, /name="website"/);
   assert.match(page, /class="cf-turnstile"/);
   assert.match(page, /data-action="contact"/);
+  assert.match(page, /Step 1/);
+  assert.match(page, /does not mean your message was sent/);
+  assert.match(page, /Step 2/);
+  assert.match(page, /Delivery status/);
+  assert.match(page, /Not sent yet/);
+  assert.match(page, /<button type="submit" disabled>/);
   assert.match(page, /The secure form needs JavaScript/);
   assert.match(page, /mailto:spicymsgstudio@gmail\.com/);
 
@@ -168,6 +207,11 @@ test("contact is a validated Cloudflare-backed action with a mail fallback", asy
   assert.match(pageSource, /window\.turnstile\.render/);
   assert.match(pageSource, /api\.js\?render=explicit/);
   assert.match(pageSource, /container\.clientWidth < 300 \? "compact" : "flexible"/);
+  assert.match(pageSource, /"expired-callback"/);
+  assert.match(pageSource, /"error-callback"/);
+  assert.match(pageSource, /Verified — your message is still not sent/);
+  assert.match(pageSource, /Delivered — message sent/);
+  assert.match(pageSource, /Not delivered —/);
   assert.match(pageSource, /astro:page-load/);
   assert.match(pageSource, /resetTurnstile\(\)/);
 

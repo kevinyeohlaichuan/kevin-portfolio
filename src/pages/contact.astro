@@ -54,60 +54,92 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
         </noscript>
 
         <form class="contact-form" data-contact-form method="post" novalidate>
-        <div class="contact-field-row">
+          <div class="contact-field-row">
+            <label>
+              <span>Name</span>
+              <input name="name" type="text" autocomplete="name" minlength="2" maxlength="80" required />
+            </label>
+            <label>
+              <span>Email</span>
+              <input name="email" type="email" autocomplete="email" maxlength="254" required />
+            </label>
+          </div>
+
           <label>
-            <span>Name</span>
-            <input name="name" type="text" autocomplete="name" minlength="2" maxlength="80" required />
+            <span>What is this about?</span>
+            <select name="topic" required>
+              <option value="">Choose one</option>
+              <option value="employment">Employment</option>
+              <option value="collaboration">Project collaboration</option>
+              <option value="press">Press and media</option>
+              <option value="other">Other</option>
+            </select>
           </label>
+
           <label>
-            <span>Email</span>
-            <input name="email" type="email" autocomplete="email" maxlength="254" required />
+            <span>Message</span>
+            <textarea
+              name="message"
+              rows="8"
+              minlength="20"
+              maxlength="5000"
+              placeholder="Scope, timing, links, and what a good outcome looks like."
+              required
+            ></textarea>
           </label>
-        </div>
 
-        <label>
-          <span>What is this about?</span>
-          <select name="topic" required>
-            <option value="">Choose one</option>
-            <option value="employment">Employment</option>
-            <option value="collaboration">Project collaboration</option>
-            <option value="press">Press and media</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
+          <label class="contact-honeypot" aria-hidden="true">
+            <span>Website</span>
+            <input name="website" type="text" tabindex="-1" autocomplete="off" />
+          </label>
 
-        <label>
-          <span>Message</span>
-          <textarea
-            name="message"
-            rows="8"
-            minlength="20"
-            maxlength="5000"
-            placeholder="Scope, timing, links, and what a good outcome looks like."
-            required
-          ></textarea>
-        </label>
+          <div class="contact-step contact-verification-step" aria-labelledby="verification-step-title">
+            <div class="contact-step-heading">
+              <span aria-hidden="true">Step 1</span>
+              <h3 id="verification-step-title">Security check</h3>
+            </div>
+            <p class="contact-step-copy" id="verification-help">
+              Cloudflare may show a green &ldquo;Success!&rdquo; here. That only means
+              verification passed; it does not mean your message was sent.
+            </p>
+            <div
+              class="cf-turnstile"
+              data-turnstile-widget
+              data-sitekey={turnstileSiteKey}
+              data-action="contact"
+              data-theme="dark"
+              data-size="flexible"
+              aria-describedby="verification-help verification-status"
+            ></div>
+            <p
+              class="contact-verification-status"
+              id="verification-status"
+              data-verification-status
+              data-state="pending"
+              role="status"
+              aria-live="polite"
+            >
+              Waiting for verification.
+            </p>
+          </div>
 
-        <label class="contact-honeypot" aria-hidden="true">
-          <span>Website</span>
-          <input name="website" type="text" tabindex="-1" autocomplete="off" />
-        </label>
-
-          <div
-            class="cf-turnstile"
-            data-turnstile-widget
-            data-sitekey={turnstileSiteKey}
-            data-action="contact"
-            data-theme="dark"
-            data-size="flexible"
-          ></div>
-
-        <div class="contact-submit-row">
-          <button type="submit">Send message <span aria-hidden="true">↗</span></button>
-          <p class="contact-status" data-contact-status role="status" aria-live="polite">
-            Protected by Cloudflare Turnstile.
-          </p>
-        </div>
+          <div class="contact-step contact-delivery-step" aria-labelledby="delivery-step-title">
+            <div class="contact-step-heading">
+              <span aria-hidden="true">Step 2</span>
+              <h3 id="delivery-step-title">Send to Kevin&rsquo;s inbox</h3>
+            </div>
+            <div class="contact-submit-row">
+              <button type="submit" disabled>
+                Send message to Kevin <span aria-hidden="true">↗</span>
+              </button>
+              <div class="contact-delivery-status" data-state="idle">
+                <span>Delivery status</span>
+                <p class="contact-status" data-contact-status role="status" aria-live="polite">
+                  Not sent yet.
+                </p>
+              </div>
+            </div>
+          </div>
         </form>
       </div>
     </section>
@@ -121,6 +153,23 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
     let turnstileLoadPromise: Promise<void> | undefined;
     let turnstileContainer: HTMLElement | null = null;
     let turnstileWidgetId: string | undefined;
+    let verificationComplete = false;
+
+    type VerificationState = "pending" | "verified" | "error";
+
+    const setVerificationState = (state: VerificationState, message: string) => {
+      verificationComplete = state === "verified";
+
+      const verificationStatus = document.querySelector<HTMLElement>("[data-verification-status]");
+      const button = document.querySelector<HTMLButtonElement>('[data-contact-form] button[type="submit"]');
+
+      if (verificationStatus) {
+        verificationStatus.dataset.state = state;
+        verificationStatus.textContent = message;
+      }
+
+      if (button) button.disabled = !verificationComplete;
+    };
 
     const loadTurnstile = () => {
       if (window.turnstile) return Promise.resolve();
@@ -156,10 +205,28 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
         action: "contact",
         theme: "dark",
         size: container.clientWidth < 300 ? "compact" : "flexible",
+        callback: () => {
+          setVerificationState(
+            "verified",
+            "Verified — your message is still not sent. Continue to Step 2.",
+          );
+        },
+        "expired-callback": () => {
+          setVerificationState("pending", "Verification expired. Please complete the check again.");
+        },
+        "error-callback": () => {
+          setVerificationState(
+            "error",
+            "Verification failed to load. Please retry or use the email link.",
+          );
+        },
       });
     };
 
-    const resetTurnstile = () => window.turnstile?.reset(turnstileWidgetId);
+    const resetTurnstile = () => {
+      setVerificationState("pending", "Waiting for verification.");
+      window.turnstile?.reset(turnstileWidgetId);
+    };
 
     const actionErrorMessage = (code: string) => {
       switch (code) {
@@ -181,12 +248,17 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
 
       if (!form || !status || !button || form.dataset.bound === "true") return;
       form.dataset.bound = "true";
+      button.disabled = true;
 
       void loadTurnstile()
         .then(renderTurnstile)
         .catch(() => {
+          setVerificationState(
+            "error",
+            "Verification could not load. Please refresh or use the email link.",
+          );
           status.dataset.state = "error";
-          status.textContent = "Verification could not load. Please refresh or use the email link.";
+          status.textContent = "Not delivered — verification could not load. Please use the email link instead.";
         });
 
       form.addEventListener("submit", async (event) => {
@@ -196,7 +268,7 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
 
         button.disabled = true;
         status.dataset.state = "sending";
-        status.textContent = "Sending…";
+        status.textContent = "Sending to Kevin’s inbox…";
 
         try {
           const { error } = await actions.submitContact(new FormData(form));
@@ -204,8 +276,8 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
           if (error) {
             status.dataset.state = "error";
             status.textContent = isInputError(error)
-              ? "Check the fields and complete the verification."
-              : actionErrorMessage(error.code);
+              ? "Not delivered — check the fields and complete the verification."
+              : `Not delivered — ${actionErrorMessage(error.code)}`;
             resetTurnstile();
             return;
           }
@@ -213,13 +285,13 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
           form.reset();
           resetTurnstile();
           status.dataset.state = "success";
-          status.textContent = "Message sent. I’ll reply by email.";
+          status.textContent = "Delivered — message sent. I’ll reply by email.";
         } catch {
           resetTurnstile();
           status.dataset.state = "error";
-          status.textContent = "The contact service could not be reached. Please try again or use the email link.";
+          status.textContent = "Not delivered — the contact service could not be reached. Please try again or use the email link.";
         } finally {
-          button.disabled = false;
+          button.disabled = !verificationComplete;
         }
       });
     };
@@ -234,6 +306,7 @@ const turnstileSiteKey = import.meta.env.DEV && configuredSiteKey === "REPLACE_B
       }
       turnstileContainer = null;
       turnstileWidgetId = undefined;
+      verificationComplete = false;
     });
   </script>
 </Base>

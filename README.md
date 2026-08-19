@@ -113,6 +113,19 @@ The site builds as a Cloudflare Worker through `@astrojs/cloudflare`. Gandi can
 remain the domain registrar; only authoritative DNS moves to Cloudflare when
 the tested Worker is ready for the public cutover.
 
+Current deployment state (2026-08-19):
+
+- The production Worker is deployed at
+  `https://kevin-portfolio.kevinyeohlaichuan5385.workers.dev`.
+- The production Turnstile widget and its exact apex, `www`, Worker and staging
+  hostnames are configured in `wrangler.jsonc`. Its site key is public; the
+  secret key exists only in the ignored `.env.production` file.
+- Astro's `SESSION` binding is pinned to the provisioned KV namespace in
+  `wrangler.jsonc`, preventing a later deployment from creating another one.
+- Cloudflare Email Service sender onboarding and the public domain cutover are
+  still pending. The contact action cannot deliver mail until sender onboarding
+  succeeds.
+
 Local contact testing uses Cloudflare's documented test keys:
 
 ```bash
@@ -120,18 +133,16 @@ cp .dev.vars.example .dev.vars
 npm run dev
 ```
 
-Before a production upload:
+The tracked configuration already contains the production account, public
+Turnstile site key, hostname allowlist, email addresses, rate limiter and KV
+binding. Before a production upload:
 
-1. Create the Turnstile widget and replace `PUBLIC_TURNSTILE_SITE_KEY` plus
-   `REPLACE_WITH_WORKERS_HOST` in `wrangler.jsonc` with both exact hosts:
-   `kevin-portfolio.<account>.workers.dev` and
-   `staging-kevin-portfolio.<account>.workers.dev`.
-2. Onboard `eternalamarisuniverse.com` in Cloudflare Email Service and verify
+1. Onboard `eternalamarisuniverse.com` in Cloudflare Email Service and verify
    `spicymsgstudio@gmail.com` as the destination.
-3. Copy `.env.production.example` to the ignored `.env.production` file and
+2. Copy `.env.production.example` to the ignored `.env.production` file and
    replace its value with the real Turnstile secret. Deployment refuses test
    keys, missing files and extra variables.
-4. Authenticate and validate before the first workers.dev deployment:
+3. Authenticate and validate before uploading another Worker version:
 
 ```bash
 npx wrangler login
@@ -140,8 +151,8 @@ npm run deploy:dry
 npm run deploy
 ```
 
-After the first deployment, upload an isolated preview and promote that exact
-version after verification:
+For an isolated preview, upload a staging alias and promote that exact version
+after verification:
 
 ```bash
 npm run deploy:preview
