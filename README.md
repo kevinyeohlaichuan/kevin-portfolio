@@ -109,6 +109,10 @@ enough entries to justify its own route.
 
 ## Cloudflare deployment
 
+For the beginner-friendly frontend → backend → DNS → deployment explanation
+and the exact repeat-deploy routine, read
+[`docs/full-stack-deployment-guide.md`](docs/full-stack-deployment-guide.md).
+
 The site builds as a Cloudflare Worker through `@astrojs/cloudflare`. Gandi
 remains the domain registrar while Cloudflare provides authoritative DNS,
 Worker routing, Turnstile and Email Routing.
