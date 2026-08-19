@@ -136,6 +136,19 @@ test("www redirects to the canonical production host without changing path or qu
   );
 });
 
+test("HTTP apex redirects to HTTPS without changing path or query", () => {
+  const response = redirectToCanonicalHost(
+    new Request("http://eternalamarisuniverse.com/contact/?source=smoke"),
+  );
+
+  assert.ok(response);
+  assert.equal(response.status, 301);
+  assert.equal(
+    response.headers.get("location"),
+    "https://eternalamarisuniverse.com/contact/?source=smoke",
+  );
+});
+
 test("canonical redirects do not affect the apex, Workers.dev or local development", () => {
   for (const url of [
     "https://eternalamarisuniverse.com/about/?from=canonical-test",

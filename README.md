@@ -109,9 +109,9 @@ enough entries to justify its own route.
 
 ## Cloudflare deployment
 
-The site builds as a Cloudflare Worker through `@astrojs/cloudflare`. Gandi can
-remain the domain registrar; only authoritative DNS moves to Cloudflare when
-the tested Worker is ready for the public cutover.
+The site builds as a Cloudflare Worker through `@astrojs/cloudflare`. Gandi
+remains the domain registrar while Cloudflare provides authoritative DNS,
+Worker routing, Turnstile and Email Routing.
 
 Current deployment state (2026-08-19):
 
@@ -122,9 +122,14 @@ Current deployment state (2026-08-19):
   secret key exists only in the ignored `.env.production` file.
 - Astro's `SESSION` binding is pinned to the provisioned KV namespace in
   `wrangler.jsonc`, preventing a later deployment from creating another one.
-- Cloudflare Email Service sender onboarding and the public domain cutover are
-  still pending. The contact action cannot deliver mail until sender onboarding
-  succeeds.
+- `eternalamarisuniverse.com/*` and `www.eternalamarisuniverse.com/*` route to
+  the production Worker. `www` redirects to the HTTPS apex and Cloudflare's
+  Always Use HTTPS setting covers direct HTTP requests.
+- Gandi delegates DNS to `eloise.ns.cloudflare.com` and
+  `patryk.ns.cloudflare.com`; the registrar and renewal remain at Gandi.
+- Free Cloudflare Email Routing is active. `spicymsgstudio@gmail.com` is a
+  verified destination, and `contact@eternalamarisuniverse.com` forwards to it.
+  A real submission from the public apex completed successfully.
 
 Local contact testing uses Cloudflare's documented test keys:
 
@@ -134,15 +139,13 @@ npm run dev
 ```
 
 The tracked configuration already contains the production account, public
-Turnstile site key, hostname allowlist, email addresses, rate limiter and KV
-binding. Before a production upload:
+Turnstile site key, hostname allowlist, email addresses, rate limiter, KV
+binding and public routes. Before a production upload:
 
-1. Onboard `eternalamarisuniverse.com` in Cloudflare Email Service and verify
-   `spicymsgstudio@gmail.com` as the destination.
-2. Copy `.env.production.example` to the ignored `.env.production` file and
+1. Copy `.env.production.example` to the ignored `.env.production` file and
    replace its value with the real Turnstile secret. Deployment refuses test
    keys, missing files and extra variables.
-3. Authenticate and validate before uploading another Worker version:
+2. Authenticate and validate before uploading another Worker version:
 
 ```bash
 npx wrangler login
@@ -159,7 +162,8 @@ npm run deploy:preview
 npm run deploy:promote -- <VERSION_ID>@100% -y
 ```
 
-Domain routes stay out of `wrangler.jsonc` until the workers.dev version is
-verified. The eventual cutover preserves the existing Google verification TXT,
-removes the conflicting GitHub Pages apex/www records, and adds the Worker
-custom domains only after Cloudflare reports the zone active.
+The proxied GitHub Pages apex and `www` records remain as a rollback origin;
+the Worker routes run before that origin and serve the production site. The
+Google verification TXT is preserved. Removing the two routes and redeploying
+returns web traffic to that origin without changing the Cloudflare nameservers
+or Email Routing records.

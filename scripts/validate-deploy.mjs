@@ -83,6 +83,10 @@ const expectedHostnames = [
   "kevin-portfolio.kevinyeohlaichuan5385.workers.dev",
   "staging-kevin-portfolio.kevinyeohlaichuan5385.workers.dev",
 ];
+const expectedRoutes = [
+  "eternalamarisuniverse.com/*",
+  "www.eternalamarisuniverse.com/*",
+];
 if (
   hostnameRules.length === 0
   || hostnameRules.some((hostname, index) => hostname !== normalizedHostnameRules[index])
@@ -117,6 +121,16 @@ if (
   || expectedHostnames.some((hostname) => !normalizedHostnameRules.includes(hostname))
 ) {
   failures.push("TURNSTILE_ALLOWED_HOSTNAMES must match the production widget hostname allowlist");
+}
+
+const configuredRoutes = config.routes ?? [];
+if (
+  configuredRoutes.length !== expectedRoutes.length
+  || expectedRoutes.some((pattern) => !configuredRoutes.some((route) => (
+    route.pattern === pattern && route.zone_name === "eternalamarisuniverse.com"
+  )))
+) {
+  failures.push("routes must attach both the apex and www hosts to the production Worker");
 }
 
 if (failures.length > 0) {
