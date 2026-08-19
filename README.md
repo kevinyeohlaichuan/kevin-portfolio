@@ -127,6 +127,10 @@ Current deployment state (2026-08-19):
   Always Use HTTPS setting covers direct HTTP requests.
 - Gandi delegates DNS to `eloise.ns.cloudflare.com` and
   `patryk.ns.cloudflare.com`; the registrar and renewal remain at Gandi.
+- HTTP/3 is temporarily disabled under Cloudflare's Protocol Optimization
+  settings after the cutover exposed stale pre-Cloudflare DNS and QUIC state
+  in Chrome. HTTPS remains live over HTTP/2; re-evaluate HTTP/3 after the old
+  three-hour DNS TTL and affected browser caches have fully expired.
 - Free Cloudflare Email Routing is active. `spicymsgstudio@gmail.com` is a
   verified destination, and `contact@eternalamarisuniverse.com` forwards to it.
   A real submission from the public apex completed successfully.
