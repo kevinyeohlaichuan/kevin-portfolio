@@ -44,3 +44,6 @@ yarn-error.log*
 
 # dead vinext/Sites binding
 /.openai/
+
+# local AI tool launch settings
+/.claude/

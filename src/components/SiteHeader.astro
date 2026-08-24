@@ -10,7 +10,7 @@ const { current } = Astro.props;
   <nav aria-label="Primary navigation">
     <a href="/work" aria-current={current === "work" ? "page" : undefined}>Professional</a>
     <a href="/games" aria-current={current === "games" ? "page" : undefined}>Games</a>
-    <a href="/universe" aria-current={current === "universe" ? "page" : undefined}>Universe</a>
+    <a href="/universe/" data-astro-reload>Universe</a>
     <a href="/about" aria-current={current === "about" ? "page" : undefined}>About</a>
   </nav>
   <div class="header-actions">

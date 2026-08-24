@@ -2,12 +2,8 @@ import { glob } from "astro/loaders";
 import { defineCollection, z } from "astro:content";
 
 /**
- * Three collections, one shape each. Adding a work project, a game or a piece of
- * universe writing means adding a file — never editing a page.
- *
- * `universe` is deliberately flat. Entries carry a `kind` so factions,
- * characters and worlds can split into their own routes later, but none of
- * that structure gets built until there is enough writing to justify it.
+ * Public portfolio content. The product catalogue under `/universe/**` lives
+ * in a separate private repository and must not be added here.
  */
 
 const work = defineCollection({
@@ -49,17 +45,4 @@ const games = defineCollection({
   }),
 });
 
-const universe = defineCollection({
-  loader: glob({ base: "./src/content/universe", pattern: "**/*.{md,mdx}" }),
-  schema: z.object({
-    title: z.string(),
-    kind: z.enum(["faction", "character", "world", "artifact", "concept"]),
-    summary: z.string(),
-    /** Slugs of related entries. Wiki-style links without a wiki. */
-    related: z.array(z.string()).default([]),
-    order: z.number().default(99),
-    draft: z.boolean().default(false),
-  }),
-});
-
-export const collections = { work, games, universe };
+export const collections = { work, games };

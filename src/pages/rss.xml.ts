@@ -27,10 +27,9 @@ interface FeedItem {
 
 export async function GET(context: APIContext) {
   const site = context.site!;
-  const [work, games, universe] = await Promise.all([
+  const [work, games] = await Promise.all([
     getCollection("work"),
     getCollection("games"),
-    getCollection("universe"),
   ]);
 
   const items: FeedItem[] = [
@@ -46,14 +45,6 @@ export async function GET(context: APIContext) {
       link: new URL(`/games/${entry.id}/`, site).href,
       category: "Games",
     })),
-    ...universe
-      .filter((entry) => !entry.data.draft)
-      .map((entry) => ({
-        title: entry.data.title,
-        description: entry.data.summary,
-        link: new URL(`/universe/${entry.id}/`, site).href,
-        category: "Eternal Amaris Universe",
-      })),
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>

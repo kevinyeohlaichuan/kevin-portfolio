@@ -3,7 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import test from "node:test";
 import { contactInputSchema } from "../src/lib/contact-schema.ts";
-import { redirectToCanonicalHost } from "../src/lib/canonical-host.ts";
+import { redirectToCanonicalHost, redirectUniverseRoot } from "../src/lib/canonical-host.ts";
 
 const root = new URL("../", import.meta.url);
 const dist = new URL("dist/client/", root);
@@ -22,7 +22,6 @@ test("every route prerenders with a title, an h1 and its own description", async
     "", "work/", "work/gamuda-ss15/", "work/goprop-platform/",
     "games/", "games/i-got-a-system/", "games/nasi-lemak-survivors/",
     "games/the-waiter/", "games/to-infinity-and-beyond/",
-    "universe/", "universe/eternal-amaris-universe/",
     "about/", "contact/", "card/", "time-machine/",
   ];
 
@@ -159,13 +158,32 @@ test("canonical redirects do not affect the apex, Workers.dev or local developme
   }
 });
 
+test("the slashless universe root redirects to the private route with its query", () => {
+  const response = redirectUniverseRoot(
+    new Request("https://eternalamarisuniverse.com/universe?from=portfolio"),
+  );
+
+  assert.ok(response);
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get("location"),
+    "https://eternalamarisuniverse.com/universe/?from=portfolio",
+  );
+  assert.equal(
+    redirectUniverseRoot(new Request("https://eternalamarisuniverse.com/universe-old")),
+    undefined,
+  );
+});
+
 test("the custom Worker redirects before delegating to Astro's Cloudflare handler", async () => {
   const worker = await source("src/worker.ts");
-  const redirectIndex = worker.indexOf("redirectToCanonicalHost(request)");
+  const canonicalIndex = worker.indexOf("redirectToCanonicalHost(request)");
+  const universeIndex = worker.indexOf("redirectUniverseRoot(request)");
   const astroIndex = worker.indexOf("handle(request, env, context)");
 
-  assert.ok(redirectIndex >= 0, "custom Worker does not evaluate the canonical redirect");
-  assert.ok(astroIndex > redirectIndex, "Astro handles the request before the canonical redirect");
+  assert.ok(canonicalIndex >= 0, "custom Worker does not evaluate the canonical redirect");
+  assert.ok(universeIndex > canonicalIndex, "canonical host redirect must run first");
+  assert.ok(astroIndex > universeIndex, "Astro handles the request before the redirects");
 });
 
 test("contact is a validated Cloudflare-backed action with a mail fallback", async () => {
@@ -261,17 +279,26 @@ test("contact input accepts Astro's null representation for empty optional form 
 test("content collections drive the routes", async () => {
   const work = await readdir(new URL("src/content/work", root));
   const games = await readdir(new URL("src/content/games", root));
-  const universe = await readdir(new URL("src/content/universe", root));
 
   assert.ok(work.length >= 2, "expected at least two work projects");
   assert.ok(games.length >= 4, "expected at least four games");
-  assert.ok(universe.length >= 1, "the universe needs somewhere to start");
 
   // Every game file must produce a route.
   for (const file of games) {
     const slug = file.replace(/\.mdx?$/, "");
     await stat(new URL(`games/${slug}/index.html`, dist));
   }
+});
+
+test("private universe product source stays out of the public repository", async () => {
+  assert.ok(!existsSync(new URL("src/pages/universe", root)));
+  assert.ok(!existsSync(new URL("src/content/universe", root)));
+  assert.ok(!existsSync(new URL("universe/", dist)));
+
+  const layout = await source("src/layouts/Base.astro");
+  const feed = await source("src/pages/rss.xml.ts");
+  assert.doesNotMatch(layout, /getCollection\("universe"\)/);
+  assert.doesNotMatch(feed, /getCollection\("universe"\)/);
 });
 
 test("assets stay inside budget", async () => {
@@ -577,7 +604,7 @@ test("view transitions and landmarks are wired", async () => {
   const layout = await source("src/layouts/Base.astro");
   assert.match(layout, /ClientRouter/);
 
-  for (const route of ["", "about/", "games/", "universe/"]) {
+  for (const route of ["", "about/", "games/"]) {
     const page = await html(route);
     assert.match(page, /class="skip-link"/, `${route} has no skip link`);
     assert.match(page, /id="main"/, `${route} has no main landmark target`);

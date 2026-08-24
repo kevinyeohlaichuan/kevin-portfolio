@@ -15,3 +15,22 @@ export function redirectToCanonicalHost(request: Request): Response | undefined 
 
   return Response.redirect(url, 301);
 }
+
+/**
+ * The private Universe Worker owns `/universe/*`, which deliberately does not
+ * match the slashless root. Send that one URL to the private route while
+ * preserving its query string.
+ */
+export function redirectUniverseRoot(request: Request): Response | undefined {
+  const url = new URL(request.url);
+  if (
+    url.hostname !== CANONICAL_HOST ||
+    url.protocol !== "https:" ||
+    url.pathname !== "/universe"
+  ) {
+    return undefined;
+  }
+
+  url.pathname = "/universe/";
+  return Response.redirect(url, 308);
+}
