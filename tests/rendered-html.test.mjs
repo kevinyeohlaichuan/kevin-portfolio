@@ -21,7 +21,7 @@ test("every route prerenders with a title, an h1 and its own description", async
   const routes = [
     "", "work/", "work/gamuda-ss15/", "work/goprop-platform/",
     "games/", "games/i-got-a-system/", "games/nasi-lemak-survivors/",
-    "games/the-waiter/", "games/to-infinity-and-beyond/",
+    "games/the-waiter/", "games/to-infinity-and-beyond/", "games/hustle-fussle/",
     "about/", "contact/", "card/", "time-machine/",
   ];
 
@@ -120,6 +120,31 @@ test("no company product is embedded in an iframe", async () => {
     assert.doesNotMatch(page, /<iframe/i, `${route} embeds an iframe`);
   }
   assert.ok(!existsSync(new URL("src/components/LiveProductFrame.tsx", root)));
+});
+
+test("a separately hosted game links out to its live demo instead of shipping inside the portfolio", async () => {
+  const page = await html("games/hustle-fussle/");
+  const demos = [...page.matchAll(/<a class="primary-button" href="([^"]+)"[^>]*>\s*Play live demo/g)]
+    .map((match) => match[1]);
+  assert.ok(demos.length >= 1, "the case study has a Play live demo button");
+  for (const href of demos) {
+    assert.equal(href, "https://hustle-fussle.pages.dev/", "the demo button opens the standalone game");
+  }
+  assert.doesNotMatch(page, /<iframe/i, "the game is linked, never embedded");
+
+  // The Godot build deploys on its own site; none of its files belong here.
+  for (const file of ["index.wasm", "index.wasm.gz", "index.pck"]) {
+    assert.ok(!existsSync(new URL(file, dist)), `${file} leaked into the portfolio build`);
+  }
+
+  // Screenshots go through the image pipeline, lazily, with alt text.
+  const shots = [...page.matchAll(/<img[^>]+>/g)].map((match) => match[0])
+    .filter((tag) => tag.includes("/_astro/"));
+  assert.ok(shots.length >= 3, `expected three optimised screenshots, found ${shots.length}`);
+  for (const tag of shots) {
+    assert.match(tag, /loading="lazy"/);
+    assert.match(tag, /alt="[^"]{12,}"/);
+  }
 });
 
 test("www redirects to the canonical production host without changing path or query", () => {

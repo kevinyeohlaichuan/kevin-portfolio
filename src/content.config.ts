@@ -39,6 +39,11 @@ const games = defineCollection({
     engine: z.string(),
     summary: z.string(),
     storeUrl: z.string().url().optional(),
+    /**
+     * A playable build hosted on its own site. Linked out like every other
+     * product, never embedded, so the game ships and deploys independently.
+     */
+    liveDemoUrl: z.string().url().optional(),
     /** Playable Phaser vignette, booted on click only. */
     demo: z.enum(["system", "nasi", "infinity"]).optional(),
     order: z.number().default(99),

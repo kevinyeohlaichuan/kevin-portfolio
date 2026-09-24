@@ -38,6 +38,13 @@ const schema = {
         <p class="project-eyebrow">{entry.data.statusLabel} · {entry.data.engine}</p>
         <h1>{entry.data.title}</h1>
         <p class="entry-tagline">{entry.data.summary}</p>
+        {entry.data.liveDemoUrl && (
+          <p class="entry-cta">
+            <a class="primary-button" href={entry.data.liveDemoUrl} target="_blank" rel="noreferrer">
+              Play live demo <span aria-hidden="true">↗</span>
+            </a>
+          </p>
+        )}
       </header>
 
       <div class="entry-meta">
@@ -55,6 +62,13 @@ const schema = {
         <p class="entry-cta">
           <a class="primary-button" href={entry.data.storeUrl} target="_blank" rel="noreferrer">
             Play it <span aria-hidden="true">↗</span>
+          </a>
+        </p>
+      )}
+      {!entry.data.storeUrl && entry.data.liveDemoUrl && (
+        <p class="entry-cta">
+          <a class="primary-button" href={entry.data.liveDemoUrl} target="_blank" rel="noreferrer">
+            Play live demo <span aria-hidden="true">↗</span>
           </a>
         </p>
       )}

@@ -1,0 +1,91 @@
+---
+title: "Hustle Fussle"
+status: "prototype"
+statusLabel: "Playable prototype · Web"
+platforms: ["Web", "Mobile browser"]
+engine: "Godot"
+summary: "A service-worker survival game: unstable repair gigs and household pressure first, then the same family again with a protected marketplace."
+liveDemoUrl: "https://hustle-fussle.pages.dev/"
+order: 5
+---
+
+import { Image } from "astro:assets";
+import informalLead from "../../assets/games/hustle-fussle/informal-lead.webp";
+import timedBar from "../../assets/games/hustle-fussle/timed-bar.webp";
+import protectedMarketplace from "../../assets/games/hustle-fussle/protected-marketplace.webp";
+
+## The problem it plays out
+
+Informal repair work is risky for the worker, not only for the customer.
+Leads arrive through chat groups and old phone contacts. There is no deposit,
+no written scope and no protection when a client decides the job was worth
+half. Hustle Fussle makes that pressure something you feel through play
+instead of something you are told.
+
+## Two runs, same family
+
+**Before the system.** You look for work through chat groups, phone contacts
+or by walking the shophouses, travel to the job, finish the repair and wait to
+be judged. The first client pays half and blocks your number. What you earn is
+then split across milk powder, diapers, medicine, food, rent due every three
+days and an RM 8,500 debt.
+
+**After a failure.** The game asks: what if we had a system? New Game+
+restarts the same household on Day 1, with a protected marketplace this time.
+Jobs come with a clear scope, payment is held in escrow, and good work earns
+tips and ratings towards a five-star profile. The family, the rent and the debt
+stay the same, so the difference comes from the system alone.
+
+<div class="entry-shots">
+  <figure>
+    <div class="capture-window">
+      <Image src={informalLead} alt="An informal WhatsApp job lead with no deposit, contract or escrow" widths={[240, 480]} sizes="(max-width: 720px) 64vw, 240px" loading="lazy" />
+    </div>
+    <figcaption>Before · informal lead</figcaption>
+  </figure>
+  <figure>
+    <div class="capture-window">
+      <Image src={timedBar} alt="The repair step: a green, yellow, green timing bar with a GREAT hit" widths={[240, 480]} sizes="(max-width: 720px) 64vw, 240px" loading="lazy" />
+    </div>
+    <figcaption>The repair · timed bar</figcaption>
+  </figure>
+  <figure>
+    <div class="capture-window">
+      <Image src={protectedMarketplace} alt="The protected marketplace with escrow jobs, ratings and tips" widths={[240, 480]} sizes="(max-width: 720px) 64vw, 240px" loading="lazy" />
+    </div>
+    <figcaption>After · protected marketplace</figcaption>
+  </figure>
+</div>
+
+## What I designed and built
+
+The game design, economy and progression, and the product framing behind it.
+Each repair is a three-step tap game: a timed bar, rapid pumping and a rhythm
+sequence. The worker&rsquo;s hunger, health and happiness change how forgiving
+it is, so a skipped meal shows up in the next job. The worker, spouse and child
+each have their own needs, so every purchase has a clear target. Rent follows a
+fixed calendar, random household events include quiet days, and every way to
+fail carries its own ending.
+
+Built in Godot 4.7 through an AI-assisted workflow that I directed and
+reviewed, with the design decisions and playtest findings kept in a written
+design document.
+
+## Technical notes
+
+It is a touch-first web build for a 390 px phone. Layout is set in
+device-independent pixels, so it stays full size on high-density screens
+instead of shrinking to a third. A tap is judged against where the needle was
+when the player tapped, not a later frame, so both green bands score the same
+whichever way the needle is moving.
+
+A 15-part headless test suite covers the economy, the day and rent rules,
+overlays and phone layout. The latest playtest fixes were each checked by
+restoring the old code and watching their test fail. The engine file is compressed to fit the host&rsquo;s
+per-file limit and unpacked in the browser, and the game deploys on its own
+site, separate from this portfolio.
+
+## Where it is
+
+A playable prototype. The core loop, both runs and the five-star milestone
+work end to end. Balance is still being tuned from playtests.
