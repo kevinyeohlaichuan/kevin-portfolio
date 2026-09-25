@@ -1,5 +1,4 @@
 ---
-import { getCollection } from "astro:content";
 import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import { EAUCosmos } from "../components/EAUCosmos";
@@ -10,13 +9,11 @@ import { GameMicroDemo } from "../components/GameMicroDemo";
 import { PixelVigil } from "../components/PixelVigil";
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
-import { getFeaturedGames } from "../lib/portfolio";
+import { getFeaturedGames, getFeaturedWork } from "../lib/portfolio";
 
 export const prerender = true;
 
-const work = (await getCollection("work"))
-  .filter((entry) => entry.data.featured)
-  .sort((a, b) => a.data.order - b.data.order);
+const work = await getFeaturedWork();
 
 // Real projects before decorative demos. Which games appear, and in what
 // order, is content metadata (portfolioVisible + featured + featuredOrder).

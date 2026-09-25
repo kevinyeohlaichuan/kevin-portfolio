@@ -1,14 +1,12 @@
 ---
-import { getCollection } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
+import { getPublicWork } from "../../lib/portfolio";
 
 export const prerender = true;
 
-const work = (await getCollection("work")).sort(
-  (a, b) => a.data.order - b.data.order,
-);
+const work = await getPublicWork();
 ---
 
 <Base

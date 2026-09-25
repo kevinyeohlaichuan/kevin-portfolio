@@ -308,39 +308,45 @@ test("content collections drive the routes", async () => {
   assert.ok(work.length >= 2, "expected at least two work projects");
   assert.ok(games.length >= 4, "expected at least four games");
 
-  // Every public game produces a route; a hidden or archived one produces none.
-  for (const file of games) {
-    const slug = file.replace(/\.mdx?$/, "");
-    const route = new URL(`games/${slug}/index.html`, dist);
-    if (await isPublicGameFile(file)) {
-      await stat(route);
-    } else {
-      assert.ok(!existsSync(route), `hidden game ${slug} was still generated`);
+  // Every public entry produces a route; a hidden, paused or archived one produces none.
+  for (const [collection, files] of [["games", games], ["work", work]]) {
+    for (const file of files) {
+      const slug = file.replace(/\.mdx?$/, "");
+      const route = new URL(`${collection}/${slug}/index.html`, dist);
+      if (await isPublicFile(collection, file)) {
+        await stat(route);
+      } else {
+        assert.ok(!existsSync(route), `hidden ${collection} entry ${slug} was still generated`);
+      }
     }
   }
 });
 
-// Mirrors src/lib/portfolio.ts: explicitly visible and not archived.
-async function isPublicGameFile(file) {
-  const text = await source(`src/content/games/${file}`);
+// Mirrors src/lib/visibility.ts: explicitly visible and not paused/archived.
+async function isPublicFile(collection, file) {
+  const text = await source(`src/content/${collection}/${file}`);
   const frontmatter = text.split(/^---$/m)[1] ?? "";
   return /^portfolioVisible:\s*true\s*$/m.test(frontmatter)
-    && !/^status:\s*"archived"\s*$/m.test(frontmatter);
+    && !/^status:\s*"(paused|archived)"\s*$/m.test(frontmatter);
 }
 
 test("the public portfolio shows shipped and active work only", async () => {
-  // Visibility is required and explicit: "in-development" alone never publishes.
-  const files = await readdir(new URL("src/content/games", root));
-  for (const file of files) {
-    const text = await source(`src/content/games/${file}`);
-    assert.match(text, /^portfolioVisible:\s*(true|false)\s*$/m, `${file} must declare portfolioVisible`);
-    if (/^status:\s*"archived"\s*$/m.test(text)) {
-      assert.match(text, /^portfolioVisible:\s*false\s*$/m, `${file} is archived but public`);
+  // Visibility is required and explicit on every entry: an active-sounding
+  // status alone never publishes, and paused/archived can never be public.
+  for (const collection of ["games", "work"]) {
+    for (const file of await readdir(new URL(`src/content/${collection}`, root))) {
+      const text = await source(`src/content/${collection}/${file}`);
+      assert.match(text, /^portfolioVisible:\s*(true|false)\s*$/m, `${file} must declare portfolioVisible`);
+      if (/^status:\s*"(paused|archived)"\s*$/m.test(text)) {
+        assert.match(text, /^portfolioVisible:\s*false\s*$/m, `${file} is paused/archived but public`);
+      }
     }
   }
 
-  // The Waiter is retired: no route, and no mention on any built page or feed.
+  // The Waiter (archived) and the first client site (paused) have no route
+  // and no mention on any built page, feed or sitemap.
   assert.ok(!existsSync(new URL("games/the-waiter/index.html", dist)));
+  assert.ok(!existsSync(new URL("work/first-client-site/index.html", dist)));
   const built = [];
   const walk = async (dir) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -354,6 +360,16 @@ test("the public portfolio shows shipped and active work only", async () => {
   for (const file of built) {
     const text = await readFile(file, "utf8");
     assert.doesNotMatch(text, /The Waiter|the-waiter/, `${file.pathname} mentions a hidden game`);
+    assert.doesNotMatch(text, /first-client-site|First client site/, `${file.pathname} mentions paused work`);
+  }
+
+  // Active professional case studies stay public, listed and featured.
+  const workPage = await html("work/");
+  const home = await html("");
+  for (const slug of ["gamuda-ss15", "goprop-platform"]) {
+    assert.match(workPage, new RegExp(`href="/work/${slug}"`), `/work lists ${slug}`);
+    assert.match(home, new RegExp(`href="/work/${slug}"`), `the homepage features ${slug}`);
+    await stat(new URL(`work/${slug}/index.html`, dist));
   }
 
   // Active work and released titles stay public.
@@ -368,8 +384,8 @@ test("the public portfolio shows shipped and active work only", async () => {
   assert.doesNotMatch(games, /Three games/, "the games headline must not hard-code a count");
 });
 
-test("hidden games cannot leak through a page that forgot to filter", async () => {
-  // Every public read of the games collection goes through src/lib/portfolio.ts.
+test("hidden entries cannot leak through a page that forgot to filter", async () => {
+  // Every public read of games or work goes through src/lib/portfolio.ts.
   const offenders = [];
   const walk = async (dir) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -377,15 +393,19 @@ test("hidden games cannot leak through a page that forgot to filter", async () =
       if (entry.isDirectory()) await walk(url);
       else if (/\.(astro|ts|tsx|mjs|mdx)$/.test(entry.name)
         && !url.pathname.endsWith("src/lib/portfolio.ts")
-        && /getCollection\(\s*["']games["']/.test(await readFile(url, "utf8"))) {
+        && /getCollection\(\s*["'](games|work)["']/.test(await readFile(url, "utf8"))) {
         offenders.push(url.pathname);
       }
     }
   };
   await walk(new URL("src/", root));
-  assert.deepEqual(offenders, [], "read games through getPublicGames/getFeaturedGames instead");
+  assert.deepEqual(offenders, [], "read games and work through the src/lib/portfolio.ts helpers instead");
+  const rule = await source("src/lib/visibility.ts");
+  assert.match(rule, /NEVER_PUBLIC_STATUSES[^=]*=\s*\["paused", "archived"\]/);
+  assert.match(rule, /data\.portfolioVisible && !NEVER_PUBLIC_STATUSES\.includes\(data\.status\)/);
   const lib = await source("src/lib/portfolio.ts");
-  assert.match(lib, /portfolioVisible && game\.data\.status !== "archived"/);
+  assert.match(lib, /getCollection\("games", isPublicGame\)/);
+  assert.match(lib, /getCollection\("work", isPublicWork\)/);
 });
 
 test("the homepage surfaces current games from content, led by Hustle Fussle", async () => {
