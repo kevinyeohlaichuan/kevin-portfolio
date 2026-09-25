@@ -21,7 +21,7 @@ test("every route prerenders with a title, an h1 and its own description", async
   const routes = [
     "", "work/", "work/gamuda-ss15/", "work/goprop-platform/",
     "games/", "games/i-got-a-system/", "games/nasi-lemak-survivors/",
-    "games/the-waiter/", "games/to-infinity-and-beyond/", "games/hustle-fussle/",
+    "games/to-infinity-and-beyond/", "games/hustle-fussle/",
     "about/", "contact/", "card/", "time-machine/",
   ];
 
@@ -308,11 +308,104 @@ test("content collections drive the routes", async () => {
   assert.ok(work.length >= 2, "expected at least two work projects");
   assert.ok(games.length >= 4, "expected at least four games");
 
-  // Every game file must produce a route.
+  // Every public game produces a route; a hidden or archived one produces none.
   for (const file of games) {
     const slug = file.replace(/\.mdx?$/, "");
+    const route = new URL(`games/${slug}/index.html`, dist);
+    if (await isPublicGameFile(file)) {
+      await stat(route);
+    } else {
+      assert.ok(!existsSync(route), `hidden game ${slug} was still generated`);
+    }
+  }
+});
+
+// Mirrors src/lib/portfolio.ts: explicitly visible and not archived.
+async function isPublicGameFile(file) {
+  const text = await source(`src/content/games/${file}`);
+  const frontmatter = text.split(/^---$/m)[1] ?? "";
+  return /^portfolioVisible:\s*true\s*$/m.test(frontmatter)
+    && !/^status:\s*"archived"\s*$/m.test(frontmatter);
+}
+
+test("the public portfolio shows shipped and active work only", async () => {
+  // Visibility is required and explicit: "in-development" alone never publishes.
+  const files = await readdir(new URL("src/content/games", root));
+  for (const file of files) {
+    const text = await source(`src/content/games/${file}`);
+    assert.match(text, /^portfolioVisible:\s*(true|false)\s*$/m, `${file} must declare portfolioVisible`);
+    if (/^status:\s*"archived"\s*$/m.test(text)) {
+      assert.match(text, /^portfolioVisible:\s*false\s*$/m, `${file} is archived but public`);
+    }
+  }
+
+  // The Waiter is retired: no route, and no mention on any built page or feed.
+  assert.ok(!existsSync(new URL("games/the-waiter/index.html", dist)));
+  const built = [];
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const url = new URL(entry.name + (entry.isDirectory() ? "/" : ""), dir);
+      if (entry.isDirectory()) await walk(url);
+      else if (/\.(html|xml)$/.test(entry.name)) built.push(url);
+    }
+  };
+  await walk(dist);
+  assert.ok(built.length > 10, "expected to scan the built site");
+  for (const file of built) {
+    const text = await readFile(file, "utf8");
+    assert.doesNotMatch(text, /The Waiter|the-waiter/, `${file.pathname} mentions a hidden game`);
+  }
+
+  // Active work and released titles stay public.
+  const games = await html("games/");
+  for (const [slug, title] of [
+    ["hustle-fussle", "Hustle Fussle"], ["i-got-a-system", "I Got a System"],
+    ["nasi-lemak-survivors", "Nasi Lemak Survivors"], ["to-infinity-and-beyond", "To Infinity and Beyond"],
+  ]) {
+    assert.match(games, new RegExp(`href="/games/${slug}"`), `/games lists ${title}`);
     await stat(new URL(`games/${slug}/index.html`, dist));
   }
+  assert.doesNotMatch(games, /Three games/, "the games headline must not hard-code a count");
+});
+
+test("hidden games cannot leak through a page that forgot to filter", async () => {
+  // Every public read of the games collection goes through src/lib/portfolio.ts.
+  const offenders = [];
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const url = new URL(entry.name + (entry.isDirectory() ? "/" : ""), dir);
+      if (entry.isDirectory()) await walk(url);
+      else if (/\.(astro|ts|tsx|mjs|mdx)$/.test(entry.name)
+        && !url.pathname.endsWith("src/lib/portfolio.ts")
+        && /getCollection\(\s*["']games["']/.test(await readFile(url, "utf8"))) {
+        offenders.push(url.pathname);
+      }
+    }
+  };
+  await walk(new URL("src/", root));
+  assert.deepEqual(offenders, [], "read games through getPublicGames/getFeaturedGames instead");
+  const lib = await source("src/lib/portfolio.ts");
+  assert.match(lib, /portfolioVisible && game\.data\.status !== "archived"/);
+});
+
+test("the homepage surfaces current games from content, led by Hustle Fussle", async () => {
+  const home = await html("");
+  const featured = home.split('class="featured-games"')[1]?.split("</section>")[0] ?? "";
+  assert.ok(featured, "the homepage has a current games row");
+  const titles = [...featured.matchAll(/<h3><a href="\/games\/([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(titles[0], "hustle-fussle", "Hustle Fussle leads the current games");
+  assert.ok(titles.length >= 1 && titles.length <= 3, `expected 1-3 featured games, got ${titles.length}`);
+  assert.ok(titles.includes("i-got-a-system"), "I Got a System is featured");
+  assert.match(featured, /href="https:\/\/hustle-fussle\.pages\.dev\/"[^>]*>\s*Play live demo/);
+  assert.match(featured, /href="\/games\/hustle-fussle"[^>]*>View case study/);
+  assert.match(featured, /<img[^>]+src="\/_astro\/informal-lead[^"]+"[^>]+alt="[^"]{20,}"/);
+  assert.doesNotMatch(featured, /<iframe/i);
+  assert.match(home, /href="\/games"[^>]*>All games/);
+
+  // Driven by metadata, never by a hard-coded slug.
+  const page = await source("src/pages/index.astro");
+  assert.match(page, /getFeaturedGames\(/);
+  assert.doesNotMatch(page, /hustle-fussle|Hustle Fussle/);
 });
 
 test("private universe product source stays out of the public repository", async () => {

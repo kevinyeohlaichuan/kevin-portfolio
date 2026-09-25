@@ -1,5 +1,6 @@
 ---
 import { getCollection } from "astro:content";
+import { Image } from "astro:assets";
 import Base from "../layouts/Base.astro";
 import { EAUCosmos } from "../components/EAUCosmos";
 import { EAUMotion } from "../components/EAUMotion";
@@ -9,12 +10,17 @@ import { GameMicroDemo } from "../components/GameMicroDemo";
 import { PixelVigil } from "../components/PixelVigil";
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
+import { getFeaturedGames } from "../lib/portfolio";
 
 export const prerender = true;
 
 const work = (await getCollection("work"))
   .filter((entry) => entry.data.featured)
   .sort((a, b) => a.data.order - b.data.order);
+
+// Real projects before decorative demos. Which games appear, and in what
+// order, is content metadata (portfolioVisible + featured + featuredOrder).
+const featuredGames = await getFeaturedGames(3);
 
 const solutions = [
   {
@@ -148,6 +154,47 @@ const capabilities = [
     </div>
 
     <section class="section games-section" id="games">
+      {featuredGames.length > 0 && (
+        <div class="featured-games">
+          <p class="kicker"><span></span> Games · current projects</p>
+          <div class="featured-game-grid">
+            {featuredGames.map((game, index) => {
+              const lead = index === 0;
+              const playUrl = game.data.liveDemoUrl ?? game.data.storeUrl;
+              const playLabel = game.data.liveDemoUrl ? "Play live demo" : "Play it";
+              return (
+                <article class={lead ? "featured-game lead" : "featured-game"}>
+                  {lead && game.data.cover && (
+                    <div class="featured-game-cover">
+                      <Image
+                        src={game.data.cover}
+                        alt={game.data.coverAlt ?? ""}
+                        widths={[220, 440, 702]}
+                        sizes="(max-width: 760px) calc(100vw - 48px), 170px"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  <div class="featured-game-copy">
+                    <p class="project-eyebrow">{game.data.statusLabel}</p>
+                    <h3><a href={`/games/${game.id}`}>{game.data.title}</a></h3>
+                    <p class="project-summary">{game.data.summary}</p>
+                    <div class="featured-game-links">
+                      {playUrl && (
+                        <a class={lead ? "primary-button" : "text-link"} href={playUrl} target="_blank" rel="noreferrer">
+                          {playLabel} <span aria-hidden="true">↗</span>
+                        </a>
+                      )}
+                      <a class="text-link" href={`/games/${game.id}`}>View case study <span aria-hidden="true">↗</span></a>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div class="section-heading compact">
         <p class="kicker"><span></span> Games · playable samples</p>
         <h2>Games Made Mini</h2>

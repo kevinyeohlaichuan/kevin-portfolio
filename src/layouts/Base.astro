@@ -2,6 +2,7 @@
 import { ClientRouter } from "astro:transitions";
 import { getCollection } from "astro:content";
 import { CommandPalette, type PaletteItem } from "../components/CommandPalette";
+import { getPublicGames } from "../lib/portfolio";
 import "../styles/global.css";
 
 interface Props {
@@ -25,7 +26,7 @@ const ogImage = new URL(image, Astro.site);
 
 const [work, games] = await Promise.all([
   getCollection("work"),
-  getCollection("games"),
+  getPublicGames(),
 ]);
 
 const paletteItems: PaletteItem[] = [

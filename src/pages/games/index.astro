@@ -1,29 +1,27 @@
 ---
-import { getCollection } from "astro:content";
 import Base from "../../layouts/Base.astro";
 import SiteHeader from "../../components/SiteHeader.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import { GameMicroDemo } from "../../components/GameMicroDemo";
+import { getPublicGames } from "../../lib/portfolio";
 
 export const prerender = true;
 
-const games = (await getCollection("games")).sort(
-  (a, b) => a.data.order - b.data.order,
-);
+const games = await getPublicGames();
 const shipped = games.filter((game) => game.data.status === "released");
 const building = games.filter((game) => game.data.status !== "released");
 ---
 
 <Base
   title="Games — Spicy MSG Studio"
-  description="Games made under Spicy MSG Studio: shipped titles on Google Play and itch.io, plus a cultivation game in development."
+  description="Games made under Spicy MSG Studio: shipped titles on Google Play and itch.io, plus the projects in active development."
 >
   <main id="main">
     <SiteHeader current="games" />
 
     <section class="page-head">
       <p class="kicker"><span></span> Games · playable systems</p>
-      <h1>Three games.<br />Three different loops.</h1>
+      <h1>Games.<br />Systems worth playing.</h1>
       <p class="page-intro">
         Made under Spicy MSG Studio. Solo across design, code, pixel art,
         animation and release.

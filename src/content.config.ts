@@ -29,11 +29,26 @@ const work = defineCollection({
   }),
 });
 
+/**
+ * Public portfolio = shipped work plus active projects Kevin chooses to show.
+ * `portfolioVisible` is required and explicit, so a status such as
+ * "in-development" never publishes an entry on its own: experiments, paused
+ * and retired prototypes stay in the repository as history without
+ * cluttering the site. Every public query goes through `src/lib/portfolio.ts`.
+ */
 const games = defineCollection({
   loader: glob({ base: "./src/content/games", pattern: "**/*.{md,mdx}" }),
-  schema: z.object({
+  schema: ({ image }) => z.object({
     title: z.string(),
-    status: z.enum(["released", "in-development", "prototype"]),
+    /** `archived`: no longer developed. Never public, whatever else is set. */
+    status: z.enum(["released", "in-development", "prototype", "archived"]),
+    portfolioVisible: z.boolean(),
+    /** Homepage "Current games" row, in `featuredOrder`. Must be public. */
+    featured: z.boolean().default(false),
+    featuredOrder: z.number().default(99),
+    /** Real screenshot for the lead homepage card. Needs `coverAlt`. */
+    cover: image().optional(),
+    coverAlt: z.string().optional(),
     statusLabel: z.string(),
     platforms: z.array(z.string()),
     engine: z.string(),
@@ -47,6 +62,16 @@ const games = defineCollection({
     /** Playable Phaser vignette, booted on click only. */
     demo: z.enum(["system", "nasi", "infinity"]).optional(),
     order: z.number().default(99),
+  }).superRefine((game, ctx) => {
+    if (game.status === "archived" && game.portfolioVisible) {
+      ctx.addIssue({ code: "custom", path: ["portfolioVisible"], message: "archived games cannot be portfolio-visible" });
+    }
+    if (game.featured && (!game.portfolioVisible || game.status === "archived")) {
+      ctx.addIssue({ code: "custom", path: ["featured"], message: "only public games can be featured" });
+    }
+    if (game.cover && !game.coverAlt) {
+      ctx.addIssue({ code: "custom", path: ["coverAlt"], message: "a cover image needs alt text" });
+    }
   }),
 });
 

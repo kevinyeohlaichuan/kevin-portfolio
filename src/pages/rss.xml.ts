@@ -1,5 +1,6 @@
 import type { APIContext } from "astro";
 import { getCollection } from "astro:content";
+import { getPublicGames } from "../lib/portfolio";
 
 export const prerender = true;
 
@@ -29,7 +30,7 @@ export async function GET(context: APIContext) {
   const site = context.site!;
   const [work, games] = await Promise.all([
     getCollection("work"),
-    getCollection("games"),
+    getPublicGames(),
   ]);
 
   const items: FeedItem[] = [
